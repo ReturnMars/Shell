@@ -239,14 +239,17 @@ const handleTabMenuSelect = (key: string) => {
 <style scoped>
 @import "tailwindcss";
 
+/* 标签页项样式 */
 .tab-item {
   @apply flex items-center px-3 py-2 border-r border-gray-200 cursor-pointer transition-all duration-200 min-w-0 flex-shrink-0;
 }
 
+/* 悬停效果 */
 .tab-item:hover {
   @apply bg-gray-100;
 }
 
+/* 激活状态 */
 .tab-active {
   @apply bg-blue-50 border-b-2 border-green-500;
 }

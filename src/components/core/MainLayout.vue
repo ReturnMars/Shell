@@ -6,7 +6,7 @@
       :collapsed-width="0"
       :width="280"
       :native-scrollbar="false"
-      class="bg-white border-r border-gray-200"
+      class="wrap-layout-sidebar bg-white border-r border-gray-200"
       @collapse="sidebarCollapsed = true"
       @expand="sidebarCollapsed = false"
     >
@@ -14,7 +14,7 @@
     </n-layout-sider>
 
     <!-- 主内容区域 -->
-    <n-layout class="flex flex-col h-screen">
+    <div class="w-full flex flex-col h-screen">
       <!-- 顶部标题栏 -->
       <n-layout-header
         class="bg-white border-b border-gray-200 shadow-sm h-15 flex-shrink-0"
@@ -96,17 +96,13 @@
           </div>
         </div>
       </n-layout-footer>
-    </n-layout>
+    </div>
   </n-layout>
 </template>
 
 <script setup lang="ts">
 import { h, ref } from "vue";
-import {
-  MenuOutlined,
-  PlusOutlined,
-  SettingOutlined,
-} from "@vicons/antd";
+import { MenuOutlined, PlusOutlined, SettingOutlined } from "@vicons/antd";
 import Sidebar from "./Sidebar.vue";
 import TabBar from "./TabBar.vue";
 import ConnectionStatus from "./ConnectionStatus.vue";
@@ -148,7 +144,21 @@ const handleSettingsSelect = (key: string) => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* 侧边栏包装器样式 */
+.wrap-layout-sidebar {
+  :deep(.n-scrollbar-content) {
+    height: 100%;
+  }
+}
+.wrap-layout-main-content {
+  .n-layout {
+    :deep(.n-layout-scroll-container) {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
 /* 移动端适配 */
 @media (max-width: 768px) {
   .mobile-menu-btn {

@@ -11,10 +11,12 @@
     </div>
 
     <!-- 连接列表 -->
-    <div class="flex-1 overflow-y-auto p-2">
+    <div class="flex flex-col flex-1 overflow-y-auto p-2">
       <!-- 快速连接区域 -->
-      <div class="mb-4">
-        <div class="flex items-center justify-between mb-2">
+      <div class="mb-4 max-h-[70%] overflow-y-auto relative">
+        <div
+          class="flex items-center justify-between mb-2 sticky top-0 bg-white z-10"
+        >
           <span
             class="text-xs font-medium text-gray-600 uppercase tracking-wider"
             >快速连接</span
@@ -101,7 +103,7 @@
       </div>
 
       <!-- 分组区域 -->
-      <div class="mb-4">
+      <div class="mb-4 flex-1 overflow-y-auto">
         <div class="flex items-center justify-between mb-2">
           <span
             class="text-xs font-medium text-gray-600 uppercase tracking-wider"
@@ -140,26 +142,28 @@
       </div>
     </div>
 
-    <!-- 侧边栏底部 -->
-    <div class="p-3 border-t border-gray-200">
-      <div class="flex flex-col gap-1">
-        <n-button quaternary block size="small" @click="showSettings">
-          <template #icon>
-            <n-icon>
-              <SettingOutlined />
-            </n-icon>
-          </template>
-          设置
-        </n-button>
+    <!-- 侧边栏底部固定区域 -->
+    <div class="mt-auto border-t border-gray-200 bg-gray-50">
+      <div class="p-3">
+        <div class="flex flex-col gap-1">
+          <n-button quaternary block size="small" @click="showSettings">
+            <template #icon>
+              <n-icon>
+                <SettingOutlined />
+              </n-icon>
+            </template>
+            设置
+          </n-button>
 
-        <n-button quaternary block size="small" @click="showHelp">
-          <template #icon>
-            <n-icon>
-              <QuestionCircleOutlined />
-            </n-icon>
-          </template>
-          帮助
-        </n-button>
+          <n-button quaternary block size="small" @click="showHelp">
+            <template #icon>
+              <n-icon>
+                <QuestionCircleOutlined />
+              </n-icon>
+            </template>
+            帮助
+          </n-button>
+        </div>
       </div>
     </div>
   </div>
