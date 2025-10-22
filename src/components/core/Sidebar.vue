@@ -104,18 +104,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   CloudServerOutlined,
   FileTextOutlined,
   SettingOutlined,
   QuestionCircleOutlined,
   CodeOutlined,
 } from "@vicons/antd";
-import ConnectionStatus from "./ConnectionStatus.vue";
 import ConnectionList from "../connection/ConnectionList.vue";
 
 // 方法

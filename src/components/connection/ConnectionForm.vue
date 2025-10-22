@@ -98,44 +98,61 @@
         >
           连接
         </n-button>
+        <n-button
+          type="info"
+          size="small"
+          @click="handleTestCommand"
+          :loading="executingCommand"
+          :disabled="testing || connecting || testStatus !== 'success'"
+        >
+          测试命令
+        </n-button>
       </n-space>
     </template>
   </n-modal>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, watch, computed } from "vue";
 import type { FormInst, FormRules } from "naive-ui";
 import { useMessage } from "naive-ui";
 import { CheckCircleOutlined, CloseCircleOutlined } from "@vicons/antd";
 import { Type } from "naive-ui/es/button/src/interface";
-import { Connection, ConnectionForm } from "./type";
+import type { AuthMethod, ConnectionForm, ConnectionConfig } from "@/stores/connection";
+import { useConnectionStore } from "@/stores/connection";
 
 // Props
 interface Props {
   show: boolean;
+  editConnection?: ConnectionConfig | null;
 }
 
-defineProps<Props>();
+// 获取 props
+const props = defineProps<Props>();
 
 // Emits
 const emit = defineEmits<{
   connected: [connectionId: string];
   tested: [result: string];
+  updated: [connection: ConnectionConfig];
 }>();
+
+// 使用 Pinia store
+const connectionStore = useConnectionStore();
+const message = useMessage();
 
 // 响应式数据
 const showModal = defineModel<boolean>("show");
 const formRef = ref<FormInst | null>(null);
-const testing = ref(false);
-const isTested = ref(false);
-const connecting = ref(false);
 const testStatus = ref<"idle" | "success" | "error">("idle");
+const testing = ref(false);
+const connecting = ref(false);
+const executingCommand = ref(false);
 
-// 消息提示
-const message = useMessage();
+// 计算属性
+const isTested = computed(() => testStatus.value !== "idle");
 
+// 表单数据
 const baseFormData: ConnectionForm = {
   name: "wzd",
   host: "47.109.195.0",
@@ -143,10 +160,10 @@ const baseFormData: ConnectionForm = {
   username: "root",
   password: "Aioreturn@123",
   private_key_path: "",
-  auth_method: "Password" as "Password" | "PrivateKey" | "Both",
+  auth_method: "Password" as AuthMethod,
 };
-// 表单数据
-const formData = ref<typeof baseFormData>(structuredClone(baseFormData));
+
+const formData = ref<ConnectionForm>(structuredClone(baseFormData));
 
 // 认证方式选项
 const authOptions = [
@@ -219,7 +236,7 @@ watch(
     }
     testing.value = false;
     connecting.value = false;
-    isTested.value = false;
+    executingCommand.value = false;
   },
   { deep: true }
 );
@@ -241,18 +258,20 @@ const getTestButtonText = computed(() => {
 });
 
 // 生成连接配置
-const generateConfig = async () => {
+const generateConfig = async (): Promise<ConnectionConfig> => {
   return {
-    id: (await invoke("generate_uuid")) as string,
+    id: (await connectionStore.generateUuid()) as string,
     name: formData.value.name,
     host: formData.value.host,
     port: formData.value.port,
     username: formData.value.username,
-    password: formData.value.password,
-    private_key_path: formData.value.private_key_path,
+    password: formData.value.password || null,
+    private_key_path: formData.value.private_key_path || null,
     auth_method: formData.value.auth_method,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    connected: false,
+    active: false,
   };
 };
 
@@ -266,11 +285,11 @@ const handleTest = async () => {
     testStatus.value = "idle";
 
     const config = await generateConfig();
-    const result = await invoke("test_connection", { config });
+    const result = await connectionStore.testConnection(config);
 
-    emit("tested", result as string);
-    console.log("连接测试成功:", result);
-    testStatus.value = "success";
+    emit("tested", result.message);
+    console.log("连接测试成功:", result.message);
+    testStatus.value = result.success ? "success" : "error";
   } catch (error) {
     console.error("连接测试失败:", error);
     const errorMsg = `测试失败: ${error}`;
@@ -278,7 +297,42 @@ const handleTest = async () => {
     testStatus.value = "error";
   } finally {
     testing.value = false;
-    isTested.value = true;
+  }
+};
+
+// 测试命令
+const handleTestCommand = async () => {
+  if (!formRef.value) return;
+
+  try {
+    await formRef.value.validate();
+    executingCommand.value = true;
+
+    const config = await generateConfig();
+    
+    // 先建立连接
+    const connectResult = await connectionStore.connect(config);
+    if (!connectResult.success) {
+      throw new Error(connectResult.message);
+    }
+
+    // 执行测试命令
+    const result = await connectionStore.executeCommand(config.id, "echo 'Hello from SSH!'");
+
+    // 执行完命令后断开连接
+    try {
+      await connectionStore.disconnect(config.id);
+    } catch (disconnectError) {
+      console.warn("断开测试连接失败:", disconnectError);
+    }
+
+    message.success(`命令执行成功: ${result}`);
+    console.log("测试命令执行成功:", result);
+  } catch (error) {
+    console.error("测试命令执行失败:", error);
+    message.error(`测试命令执行失败: ${error}`);
+  } finally {
+    executingCommand.value = false;
   }
 };
 
@@ -291,21 +345,25 @@ const handleConnect = async () => {
     connecting.value = true;
 
     const config = await generateConfig();
-    const connectionId = await invoke("connect_ssh", { config });
+    const result = await connectionStore.connect(config);
 
-    // 连接成功后自动保存
-    try {
-      await invoke("save_connection", { config });
-      console.log("连接配置已自动保存");
-      message.success("连接建立成功并已保存");
-    } catch (saveError) {
-      console.warn("自动保存失败:", saveError);
-      message.warning(`连接成功，但保存失败: ${saveError}`);
+    if (result.success) {
+      // 连接成功后自动保存
+      try {
+        await connectionStore.saveConnection(config);
+        console.log("连接配置已自动保存");
+        message.success("连接建立成功并已保存");
+      } catch (saveError) {
+        console.warn("自动保存失败:", saveError);
+        message.warning(`连接成功，但保存失败: ${saveError}`);
+      }
+
+      emit("connected", result.connectionId!);
+      showModal.value = false;
+      console.log("连接建立成功:", result.connectionId);
+    } else {
+      message.error(result.message);
     }
-
-    emit("connected", connectionId as string);
-    showModal.value = false;
-    console.log("连接建立成功:", connectionId);
   } catch (error) {
     console.error("连接建立失败:", error);
     message.error(`连接建立失败: ${error}`);
@@ -321,13 +379,35 @@ const closeModal = () => {
   testStatus.value = "idle";
   testing.value = false;
   connecting.value = false;
-  isTested.value = false;
+  executingCommand.value = false;
 };
 
 // 重置表单
 const resetForm = () => {
   formData.value = structuredClone(baseFormData);
 };
+
+// 监听模态框显示状态，处理编辑模式
+watch(
+  () => showModal.value,
+  (newValue) => {
+    if (newValue && props.editConnection) {
+      // 编辑模式：填充现有连接数据
+      formData.value = {
+        name: props.editConnection.name,
+        host: props.editConnection.host,
+        port: props.editConnection.port,
+        username: props.editConnection.username,
+        password: props.editConnection.password || "",
+        private_key_path: props.editConnection.private_key_path || "",
+        auth_method: props.editConnection.auth_method,
+      };
+    } else if (newValue) {
+      // 新建模式：重置表单
+      resetForm();
+    }
+  }
+);
 
 // 暴露方法
 defineExpose({

@@ -35,6 +35,7 @@ pub fn run() {
             generate_uuid,
             save_connection,
             load_connection,
+            update_connection,
             delete_connection,
             get_saved_connections,
             export_connections,

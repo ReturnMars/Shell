@@ -100,6 +100,29 @@ impl ConnectionStorage {
         }
     }
 
+    /// 更新连接配置
+    pub fn update_connection(&self, config: &ConnectionConfig) -> Result<(), String> {
+        let mut connections = self.load_connections()?;
+        
+        // 检查连接是否存在
+        if !connections.contains_key(&config.id) {
+            return Err(format!("连接配置不存在: {}", config.id));
+        }
+        
+        // 创建要更新的配置副本
+        let mut config_to_update = config.clone();
+        
+        // 如果密码存在，加密保存
+        if let Some(password) = &config.password {
+            let encrypted_password = crypto::encrypt_password(password, &self.master_key)?;
+            config_to_update.password = Some(encrypted_password);
+        }
+        
+        // 更新连接
+        connections.insert(config.id.clone(), config_to_update);
+        self.save_connections(&connections)
+    }
+
     /// 删除连接配置
     pub fn delete_connection(&self, connection_id: &str) -> Result<(), String> {
         let mut connections = self.load_connections()?;

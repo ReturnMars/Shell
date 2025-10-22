@@ -54,37 +54,6 @@
               测试SSH连接
             </n-button>
 
-            <n-button
-              v-if="connections.length > 0"
-              type="info"
-              size="small"
-              @click="testCommand"
-            >
-              测试命令
-            </n-button>
-
-            <n-button
-              v-if="connections.length > 0"
-              type="error"
-              size="small"
-              @click="disconnectAll"
-            >
-              断开所有连接
-            </n-button>
-
-            <n-button
-              v-if="connections.length > 0"
-              type="success"
-              size="small"
-              @click="saveCurrentConnection"
-            >
-              保存当前连接
-            </n-button>
-
-            <n-button type="warning" size="small" @click="loadSavedConnections">
-              加载保存的连接
-            </n-button>
-
             <n-dropdown
               :options="settingsOptions"
               @select="handleSettingsSelect"
@@ -120,7 +89,7 @@
           <div class="flex items-center gap-4">
             <span>就绪</span>
             <span>|</span>
-            <span>连接数: {{ connections.length }}</span>
+            <span>连接数: {{ connectionStore.connectionCount }}</span>
           </div>
           <div class="flex items-center">
             <span>ShellMars v1.0.0</span>
@@ -131,11 +100,7 @@
   </n-layout>
 
   <!-- 连接表单模态框 -->
-  <ConnectionForm
-    v-model:show="showConnectionForm"
-    @tested="handleConnectionTested"
-    @connected="handleConnectionConnected"
-  />
+  <ConnectionForm v-model:show="showConnectionForm" />
 </template>
 
 <script setup lang="ts">
@@ -147,6 +112,7 @@ import TabBar from "./TabBar.vue";
 import ConnectionStatus from "./ConnectionStatus.vue";
 import ConnectionForm from "../connection/ConnectionForm.vue";
 import { NIcon, useMessage } from "naive-ui";
+import { useConnectionStore } from "@/stores/connection/index";
 
 // 响应式数据
 const isConnected = ref(false);
@@ -154,8 +120,8 @@ const sidebarCollapsed = ref(false);
 const connections = ref<any[]>([]);
 const showConnectionForm = ref(false);
 
-// 消息提示
 const message = useMessage();
+const connectionStore = useConnectionStore();
 
 // 设置菜单选项
 const settingsOptions = [
@@ -197,7 +163,7 @@ const showQuickConnect = () => {
 
 const handleSettingsSelect = async (key: string) => {
   console.log("选择设置项:", key);
-  
+
   if (key === "clear_all") {
     await clearAllConnections();
   }
@@ -208,14 +174,13 @@ const clearAllConnections = async () => {
   try {
     // 先断开所有活跃连接
     await invoke("disconnect_all_ssh");
-    
-    // 删除所有保存的连接配置
-    await invoke("delete_all_connections");
-    
+    // 使用 store 清理所有连接
+    await connectionStore.clearAllConnections();
+
     // 更新连接状态
     isConnected.value = false;
     connections.value = [];
-    
+
     message.success("所有连接已清理完成");
     console.log("所有连接已清理完成");
   } catch (error) {
@@ -224,117 +189,9 @@ const clearAllConnections = async () => {
   }
 };
 
-// 测试SSH命令执行
-const testCommand = async () => {
-  if (connections.value.length > 0) {
-    try {
-      const connectionId = connections.value[0].id;
-      const result = await invoke("execute_ssh_command", {
-        connection_id: connectionId,
-        command: "echo 'Hello from SSH!'",
-      });
-      console.log("命令执行结果:", result);
-      message.success("命令执行成功");
-    } catch (error) {
-      console.error("命令执行失败:", error);
-      message.error(`命令执行失败: ${error}`);
-    }
-  } else {
-    message.warning("没有可用的连接");
-  }
-};
-
-// 断开所有连接
-const disconnectAll = async () => {
-  try {
-    console.log("断开所有SSH连接...");
-    await invoke("disconnect_all_ssh");
-
-    // 更新连接状态
-    isConnected.value = false;
-    connections.value = [];
-
-    console.log("所有SSH连接已断开");
-    message.success("所有连接已断开");
-  } catch (error) {
-    console.error("断开连接失败:", error);
-    message.error(`断开连接失败: ${error}`);
-  }
-};
-
-// 保存当前连接
-const saveCurrentConnection = async () => {
-  if (connections.value.length > 0) {
-    try {
-      const currentConnection = connections.value[0];
-      console.log("保存连接配置:", currentConnection);
-
-      await invoke("save_connection", { config: currentConnection });
-      console.log("连接配置已保存");
-      message.success("连接配置已保存");
-    } catch (error) {
-      console.error("保存连接失败:", error);
-      message.error(`保存连接失败: ${error}`);
-    }
-  } else {
-    message.warning("没有可保存的连接");
-  }
-};
-
-// 加载保存的连接
-const loadSavedConnections = async () => {
-  try {
-    console.log("加载保存的连接配置...");
-    const savedConnections = await invoke("get_saved_connections");
-    console.log("保存的连接:", savedConnections);
-
-    // 显示保存的连接信息
-    if (Array.isArray(savedConnections) && savedConnections.length > 0) {
-      console.log(`找到 ${savedConnections.length} 个保存的连接:`);
-      savedConnections.forEach((conn: any, index: number) => {
-        console.log(`${index + 1}. ${conn.name} (${conn.host}:${conn.port})`);
-      });
-      message.success(`找到 ${savedConnections.length} 个保存的连接`);
-    } else {
-      console.log("没有找到保存的连接");
-      message.info("没有找到保存的连接");
-    }
-  } catch (error) {
-    console.error("加载保存的连接失败:", error);
-    message.error(`加载保存的连接失败: ${error}`);
-  }
-};
-
-// 连接表单事件处理
-const handleConnectionTested = async (result: string) => {
-  console.log("连接测试结果:", result);
-  // 不在这里显示消息，因为 ConnectionForm 中已经显示了
-  // 刷新连接列表
-  await refreshConnections();
-};
-
-const handleConnectionConnected = async (connectionId: string) => {
-  console.log("连接建立成功:", connectionId);
-  // 不在这里显示消息，因为 ConnectionForm 中已经显示了
-  // 刷新连接列表
-  await refreshConnections();
-};
-
-// 刷新连接列表
-const refreshConnections = async () => {
-  try {
-    const allConnections = await invoke("get_connections");
-    connections.value = allConnections as any[];
-    isConnected.value = connections.value.length > 0;
-  } catch (error) {
-    console.error("刷新连接列表失败:", error);
-  }
-};
-
 // 页面加载时初始化
 const initApp = async () => {
   console.log("初始化应用...");
-  await refreshConnections();
 };
 initApp();
 </script>

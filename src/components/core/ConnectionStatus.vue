@@ -39,7 +39,7 @@
 import { CheckCircleOutlined, InfoCircleOutlined } from "@vicons/antd";
 
 interface Props {
-  connected: boolean;
+  connected: boolean | undefined;
   size?: "small" | "medium" | "large" | "tiny";
   showText?: boolean;
   statusOnly?: boolean;

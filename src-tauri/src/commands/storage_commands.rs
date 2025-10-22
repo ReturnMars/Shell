@@ -26,6 +26,13 @@ pub async fn load_connection(connection_id: String) -> Result<ConnectionConfig, 
     storage.load_connection(&connection_id)
 }
 
+/// 更新连接配置
+#[command]
+pub async fn update_connection(config: ConnectionConfig) -> Result<(), String> {
+    let storage = CONNECTION_STORAGE.read().await;
+    storage.update_connection(&config)
+}
+
 /// 删除连接配置
 #[command]
 pub async fn delete_connection(connection_id: String) -> Result<(), String> {

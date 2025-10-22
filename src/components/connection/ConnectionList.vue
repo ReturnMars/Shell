@@ -2,11 +2,15 @@
   <!-- 连接项列表 -->
   <div class="flex flex-col gap-1">
     <n-card
-      v-for="connection in connections"
+      v-for="connection in connectionStore.connections"
       :key="connection.id"
-      :class="{ 'connection-active': connection.active }"
+      :class="[
+        'cursor-pointer transition-all duration-200 group',
+        connection.id === connectionStore.currentConnection?.id
+          ? 'border-green-500! bg-green-50 border-1! border-solid! bg-green-50!'
+          : '',
+      ]"
       hoverable
-      class="cursor-pointer transition-all duration-200 group"
       :style="{
         '--n-padding-left': '14px',
         '--n-padding-right': '14px',
@@ -26,7 +30,12 @@
         <!-- 连接信息 -->
         <div class="flex-1 min-w-0">
           <div
-            class="font-medium text-sm text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis"
+            :class="[
+              'connection-name font-medium text-[0.875rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200',
+              connection.id === connectionStore.currentConnection?.id
+                ? 'text-green-600 font-bold text-[1rem]!'
+                : 'text-gray-800',
+            ]"
           >
             {{ connection.name }}
           </div>
@@ -70,38 +79,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { ConnectionListItem } from "./type";
-import { invoke } from "@tauri-apps/api/core";
+import { onMounted } from "vue";
+import { ConnectionConfig, useConnectionStore } from "@/stores/connection";
 import { EditOutlined, DeleteOutlined } from "@vicons/antd";
 
-const connections = ref<ConnectionListItem[]>([]);
-const selectConnection = (connection: ConnectionListItem) => {
-  // 取消其他连接的激活状态
+const connectionStore = useConnectionStore();
 
-  console.log("选择连接:", connection.name);
+// 设置当前连接
+const selectConnection = (connection: ConnectionConfig) => {
+  connectionStore.setCurrentConnection(connection);
+  console.log("设置当前连接:", connection.name);
 };
 
-const editConnection = (connection: ConnectionListItem) => {
+// 编辑连接
+const editConnection = (connection: ConnectionConfig) => {
   console.log("编辑连接:", connection.name);
+  // TODO: 打开编辑表单
 };
 
-const deleteConnection = (connection: ConnectionListItem) => {
+// 删除连接
+const deleteConnection = async (connection: ConnectionConfig) => {
   if (confirm(`确定要删除连接 "${connection.name}" 吗？`)) {
-    const index = connections.value.findIndex(
-      (conn) => conn.id === connection.id
-    );
-    if (index > -1) {
-      connections.value.splice(index, 1);
+    try {
+      await connectionStore.deleteConnection(connection.id);
+    } catch (error) {
+      console.error("删除连接失败:", error);
     }
   }
 };
-const getConnections = async () => {
-  connections.value = (await invoke(
-    "get_saved_connections"
-  )) as ConnectionListItem[];
-};
-getConnections();
+
+// 组件挂载时加载连接
+onMounted(() => {
+  connectionStore.fetchConnections();
+});
 </script>
 
 <style scoped></style>

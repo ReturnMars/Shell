@@ -44,6 +44,7 @@
   - 存储命令: `src-tauri/src/commands/storage_commands.rs`
     - `save_connection(config) -> ()`（自动重命名重复名称）
     - `load_connection(connectionId) -> ConnectionConfig`
+    - `update_connection(config) -> ()`（更新现有连接）
     - `delete_connection(connectionId) -> ()`
     - `get_saved_connections() -> Vec<ConnectionConfig>`
     - `export_connections() -> String`
@@ -51,7 +52,11 @@
     - `delete_all_connections() -> ()`
   - 注册: `src-tauri/src/lib.rs` 中 `invoke_handler([...])`
 
-- 前端（Vue3 + Naive UI）
+- 前端（Vue3 + Naive UI + Pinia）
+  - 状态管理: `src/stores/connection/`
+    - `index.ts`: Pinia store，管理连接状态和CRUD操作
+    - `type.d.ts`: 连接相关类型定义
+    - 功能: 连接池管理、选中连接、CRUD操作、状态同步
   - 文件: `src/components/core/MainLayout.vue`
   - 已接入按钮与逻辑:
     - 测试SSH连接 → `test_connection`（打开ConnectionForm）
@@ -60,7 +65,7 @@
     - 保存当前连接 → `save_connection`
     - 加载保存的连接 → `get_saved_connections`
     - 清理所有连接 → `delete_all_connections`（设置菜单中）
-    - 底部状态栏显示连接数
+    - 底部状态栏显示连接数（使用Pinia store）
   - 文件: `src/components/connection/ConnectionForm.vue`
   - 现代化连接表单组件:
     - 完整的连接配置表单（名称/主机/端口/用户名/认证方式/密码/私钥）
@@ -68,6 +73,12 @@
     - 自动保存功能（连接成功后自动保存）
     - Vue 3.4+ 现代化写法（defineModel、Composition API）
     - 完整的表单验证和错误处理
+  - 文件: `src/components/connection/ConnectionList.vue`
+  - 连接列表组件:
+    - 使用Pinia store管理连接数据
+    - hover显示操作按钮（编辑/删除）
+    - 选中状态高亮显示
+    - 响应式连接状态更新
 
 #### 关键数据结构（Rust 概要）
 

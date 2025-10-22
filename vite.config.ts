@@ -5,8 +5,7 @@ import AutoImport from "unplugin-auto-import/vite";
 import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
 import { visualizer } from "rollup-plugin-visualizer";
-// @ts-expect-error process is a nodejs global
-const host = process.env.TAURI_DEV_HOST;
+import { fileURLToPath, URL } from "url";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -29,29 +28,36 @@ export default defineConfig(async () => ({
     }),
   ].filter(Boolean),
 
+  // 路径别名配置
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+
   // 构建配置
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           // Vue 核心库
-          vue: ['vue'],
-          
+          vue: ["vue"],
+
           // Naive UI 组件库
-          'naive-ui': ['naive-ui'],
-          
+          "naive-ui": ["naive-ui"],
+
           // 图标库
-          'vicons-antd': ['@vicons/antd'],
-          
+          "vicons-antd": ["@vicons/antd"],
+
           // Tauri API
-          'tauri-api': ['@tauri-apps/api']
-        }
-      }
+          "tauri-api": ["@tauri-apps/api"],
+        },
+      },
     },
     // 启用代码分割
     chunkSizeWarningLimit: 1000,
     // 生成 source map（可选）
-    sourcemap: false
+    sourcemap: false,
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -62,14 +68,8 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
+    host: false,
+
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
