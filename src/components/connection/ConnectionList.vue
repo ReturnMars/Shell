@@ -6,7 +6,7 @@
       :key="connection.id"
       :class="{ 'connection-active': connection.active }"
       hoverable
-      class="cursor-pointer transition-all duration-200"
+      class="cursor-pointer transition-all duration-200 group"
       :style="{
         '--n-padding-left': '14px',
         '--n-padding-right': '14px',
@@ -39,7 +39,7 @@
 
         <!-- 操作按钮 -->
         <div
-          class="flex items-center gap-1 opacity-0 transition-opacity duration-200 connection-actions"
+          class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         >
           <n-button
             quaternary
