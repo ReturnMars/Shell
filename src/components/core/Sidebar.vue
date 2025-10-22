@@ -30,76 +30,7 @@
           </n-button>
         </div>
 
-        <!-- 连接项列表 -->
-        <div class="flex flex-col gap-1">
-          <n-card
-            v-for="connection in connections"
-            :key="connection.id"
-            :class="{ 'connection-active': connection.active }"
-            hoverable
-            class="cursor-pointer transition-all duration-200"
-            :style="{
-              '--n-padding-left': '14px',
-              '--n-padding-right': '14px',
-              '--n-padding-top': '8px',
-              '--n-padding-bottom': '8px',
-            }"
-            @click="selectConnection(connection)"
-          >
-            <div class="flex items-center gap-3">
-              <!-- 连接状态指示器 -->
-              <ConnectionStatus
-                :connected="connection.connected"
-                size="small"
-                statusOnly
-              />
-
-              <!-- 连接信息 -->
-              <div class="flex-1 min-w-0">
-                <div
-                  class="font-medium text-sm text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis"
-                >
-                  {{ connection.name }}
-                </div>
-                <div
-                  class="text-xs text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5"
-                >
-                  {{ connection.host }}:{{ connection.port }}
-                </div>
-              </div>
-
-              <!-- 操作按钮 -->
-              <div
-                class="flex items-center gap-1 opacity-0 transition-opacity duration-200 connection-actions"
-              >
-                <n-button
-                  quaternary
-                  circle
-                  size="tiny"
-                  @click.stop="editConnection(connection)"
-                >
-                  <template #icon>
-                    <n-icon>
-                      <EditOutlined />
-                    </n-icon>
-                  </template>
-                </n-button>
-                <n-button
-                  quaternary
-                  circle
-                  size="tiny"
-                  @click.stop="deleteConnection(connection)"
-                >
-                  <template #icon>
-                    <n-icon>
-                      <DeleteOutlined />
-                    </n-icon>
-                  </template>
-                </n-button>
-              </div>
-            </div>
-          </n-card>
-        </div>
+        <ConnectionList />
       </div>
 
       <!-- 分组区域 -->
@@ -185,68 +116,9 @@ import {
   CodeOutlined,
 } from "@vicons/antd";
 import ConnectionStatus from "./ConnectionStatus.vue";
-
-// 连接数据接口
-interface Connection {
-  id: string;
-  name: string;
-  host: string;
-  port: number;
-  connected: boolean;
-  active: boolean;
-}
-
-// 响应式数据
-const connections = ref<Connection[]>([
-  {
-    id: "1",
-    name: "生产服务器",
-    host: "192.168.1.100",
-    port: 22,
-    connected: false,
-    active: false,
-  },
-  {
-    id: "2",
-    name: "开发服务器",
-    host: "192.168.1.101",
-    port: 22,
-    connected: true,
-    active: true,
-  },
-  {
-    id: "3",
-    name: "测试服务器",
-    host: "192.168.1.102",
-    port: 22,
-    connected: false,
-    active: false,
-  },
-]);
+import ConnectionList from "../connection/ConnectionList.vue";
 
 // 方法
-const selectConnection = (connection: Connection) => {
-  // 取消其他连接的激活状态
-  connections.value.forEach((conn) => {
-    conn.active = conn.id === connection.id;
-  });
-  console.log("选择连接:", connection.name);
-};
-
-const editConnection = (connection: Connection) => {
-  console.log("编辑连接:", connection.name);
-};
-
-const deleteConnection = (connection: Connection) => {
-  if (confirm(`确定要删除连接 "${connection.name}" 吗？`)) {
-    const index = connections.value.findIndex(
-      (conn) => conn.id === connection.id
-    );
-    if (index > -1) {
-      connections.value.splice(index, 1);
-    }
-  }
-};
 
 const showAddConnection = () => {
   console.log("显示添加连接对话框");

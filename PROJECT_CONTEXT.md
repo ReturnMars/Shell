@@ -2,13 +2,14 @@
 
 - 项目: ShellMars（Tauri + Vue3 + Naive UI + Rust）
 - 平台: Windows/macOS/Linux
-- 当前阶段: 基础框架开发
+- 当前阶段: 基础框架开发 + 核心功能完善
 - 进度:
-  - T001 环境搭建: 完成
-  - T002 基础UI框架: 完成（MainLayout/Sidebar/TabBar/ConnectionStatus）
-  - T003.1-4: 完成（SSH依赖/模型/服务/Tauri命令）
-  - T003.5: 完成（连接配置持久化：保存/加载/导入/导出/去重覆盖/删除全部）
-  - 待办: T003.6（前端连接管理组件），T003.7（集成测试）
+  - T001 环境搭建: 完成 ✅
+  - T002 基础UI框架: 完成 ✅（MainLayout/Sidebar/TabBar/ConnectionStatus）
+  - T003.1-4: 完成 ✅（SSH依赖/模型/服务/Tauri命令）
+  - T003.5: 完成 ✅（连接配置持久化：保存/加载/导入/导出/按名称去重/删除全部）
+  - T003.6: 完成 ✅（前端连接管理组件：ConnectionForm + 现代化UI）
+  - T003.7: 完成 ✅（集成测试 + Bug修复 + 功能优化）
 
 #### 关键能力与实现
 
@@ -23,7 +24,7 @@
     - macOS: `/Users/<User>/Library/Application Support/ShellMars`
     - Linux: `/home/<User>/.config/ShellMars`
   - 文件: `connections.json`（连接配置，密码加密），`master.key`（AES-256-GCM 主密钥）
-  - 策略: 去重键 `username:port@host`；保存时同键覆盖；导入时去重合并；支持删除全部
+  - 策略: 按连接名称自动重命名（name(1), name(2)...）；支持删除全部；UUID生成优化
 
 - 加密
   - 文件: `src-tauri/src/utils/crypto.rs`
@@ -37,27 +38,36 @@
     - `disconnect_all_ssh() -> ()`
     - `get_connection_status(connectionId) -> ConnectionStatus`
     - `get_connections() -> Vec<ConnectionConfig>`
-    - `execute_ssh_command(connectionId, command) -> String`
-    - `test_connection(config) -> String`
+    - `execute_ssh_command(connection_id, command) -> String`（参数名已修复）
+    - `test_connection(config) -> String`（测试后自动断开）
+    - `generate_uuid() -> String`（UUID生成）
   - 存储命令: `src-tauri/src/commands/storage_commands.rs`
-    - `save_connection(config) -> ()`
+    - `save_connection(config) -> ()`（自动重命名重复名称）
     - `load_connection(connectionId) -> ConnectionConfig`
     - `delete_connection(connectionId) -> ()`
     - `get_saved_connections() -> Vec<ConnectionConfig>`
     - `export_connections() -> String`
-    - `import_connections(jsonData) -> ()`
+    - `import_connections(jsonData) -> ()`（自动重命名重复名称）
     - `delete_all_connections() -> ()`
   - 注册: `src-tauri/src/lib.rs` 中 `invoke_handler([...])`
 
 - 前端（Vue3 + Naive UI）
   - 文件: `src/components/core/MainLayout.vue`
   - 已接入按钮与逻辑:
-    - 测试SSH连接 → `test_connection`
-    - 测试命令 → `execute_ssh_command`
+    - 测试SSH连接 → `test_connection`（打开ConnectionForm）
+    - 测试命令 → `execute_ssh_command`（参数名已修复）
     - 断开所有连接 → `disconnect_all_ssh`
     - 保存当前连接 → `save_connection`
     - 加载保存的连接 → `get_saved_connections`
+    - 清理所有连接 → `delete_all_connections`（设置菜单中）
     - 底部状态栏显示连接数
+  - 文件: `src/components/connection/ConnectionForm.vue`
+  - 现代化连接表单组件:
+    - 完整的连接配置表单（名称/主机/端口/用户名/认证方式/密码/私钥）
+    - 动态测试按钮（成功/失败/测试中状态显示）
+    - 自动保存功能（连接成功后自动保存）
+    - Vue 3.4+ 现代化写法（defineModel、Composition API）
+    - 完整的表单验证和错误处理
 
 #### 关键数据结构（Rust 概要）
 
@@ -70,9 +80,12 @@
 #### 成功测试记录（样例）
 
 - 连接: `47.109.195.0:22` 用户 `root` → 连接成功，返回 `connectionId`
-- 命令: `echo 'Hello from SSH!'` → 正常返回
+- 命令: `echo 'Hello from SSH!'` → 正常返回（参数名已修复）
 - 断开: `disconnect_all_ssh` → 连接清空
-- 持久化: `save_connection` 后 `get_saved_connections` 可读出，去重策略生效
+- 持久化: `save_connection` 后 `get_saved_connections` 可读出，自动重命名策略生效，按时间倒序排序
+- 测试连接: `test_connection` → 测试后自动断开，不保留在连接池
+- UUID生成: `generate_uuid` → 返回标准UUID格式
+- 清理功能: `delete_all_connections` → 一键清理所有连接和配置
 
 #### 依赖（Cargo.toml 关键）
 

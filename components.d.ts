@@ -11,6 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ConnectionForm: typeof import('./src/components/connection/ConnectionForm.vue')['default']
+    ConnectionList: typeof import('./src/components/connection/ConnectionList.vue')['default']
     ConnectionStatus: typeof import('./src/components/core/ConnectionStatus.vue')['default']
     MainLayout: typeof import('./src/components/core/MainLayout.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
@@ -23,11 +25,16 @@ declare module 'vue' {
     NIcon: typeof import('naive-ui')['NIcon']
     NInput: typeof import('naive-ui')['NInput']
     NInputGroup: typeof import('naive-ui')['NInputGroup']
+    NInputNumber: typeof import('naive-ui')['NInputNumber']
     NLayout: typeof import('naive-ui')['NLayout']
     NLayoutContent: typeof import('naive-ui')['NLayoutContent']
     NLayoutFooter: typeof import('naive-ui')['NLayoutFooter']
     NLayoutHeader: typeof import('naive-ui')['NLayoutHeader']
     NLayoutSider: typeof import('naive-ui')['NLayoutSider']
+    NMessageProvider: typeof import('naive-ui')['NMessageProvider']
+    NModal: typeof import('naive-ui')['NModal']
+    NSelect: typeof import('naive-ui')['NSelect']
+    NSpace: typeof import('naive-ui')['NSpace']
     NTag: typeof import('naive-ui')['NTag']
     Sidebar: typeof import('./src/components/core/Sidebar.vue')['default']
     TabBar: typeof import('./src/components/core/TabBar.vue')['default']

@@ -35,41 +35,52 @@ impl ConnectionStorage {
         })
     }
 
-    /// 计算去重键（host+port+username）
-    fn dedup_key_of(config: &ConnectionConfig) -> String {
-        format!("{}:{}@{}", config.username, config.port, config.host)
-    }
-
-    /// 在现有连接中查找相同去重键的项，返回其id
-    fn find_existing_id_by_key(
+    /// 在现有连接中查找相同名称的项，返回其id
+    fn find_existing_by_name(
         connections: &HashMap<String, ConnectionConfig>,
-        candidate: &ConnectionConfig,
+        candidate_name: &str,
     ) -> Option<String> {
-        let key = Self::dedup_key_of(candidate);
         connections
             .iter()
-            .find(|(_, cfg)| Self::dedup_key_of(cfg) == key)
+            .find(|(_, cfg)| cfg.name == candidate_name)
             .map(|(id, _)| id.clone())
     }
 
-    /// 保存连接配置（按 host+port+username 去重，存在则覆盖）
+    /// 生成唯一的连接名称，如果名称重复则自动添加数字后缀
+    fn generate_unique_name(
+        connections: &HashMap<String, ConnectionConfig>,
+        base_name: &str,
+    ) -> String {
+        let mut name = base_name.to_string();
+        let mut counter = 1;
+        
+        while Self::find_existing_by_name(connections, &name).is_some() {
+            name = format!("{}({})", base_name, counter);
+            counter += 1;
+        }
+        
+        name
+    }
+
+    /// 保存连接配置（自动处理名称重复，生成唯一名称）
     pub fn save_connection(&self, config: &ConnectionConfig) -> Result<(), String> {
         let mut connections = self.load_connections()?;
 
-        // 如果密码存在，加密保存
+        // 生成唯一的连接名称
+        let unique_name = Self::generate_unique_name(&connections, &config.name);
+        
+        // 创建要保存的配置副本
         let mut config_to_save = config.clone();
+        config_to_save.name = unique_name;
+
+        // 如果密码存在，加密保存
         if let Some(password) = &config.password {
             let encrypted_password = crypto::encrypt_password(password, &self.master_key)?;
             config_to_save.password = Some(encrypted_password);
         }
 
-        // 去重：若已有相同(host,port,username)的记录，覆盖其id
-        if let Some(existing_id) = Self::find_existing_id_by_key(&connections, &config_to_save) {
-            connections.insert(existing_id, config_to_save);
-        } else {
-            connections.insert(config.id.clone(), config_to_save);
-        }
-
+        // 直接保存新连接
+        connections.insert(config.id.clone(), config_to_save);
         self.save_connections(&connections)
     }
 
@@ -96,7 +107,7 @@ impl ConnectionStorage {
         self.save_connections(&connections)
     }
 
-    /// 获取所有连接配置（返回前解密密码）
+    /// 获取所有连接配置（返回前解密密码，按时间倒序排序）
     pub fn get_all_connections(&self) -> Result<Vec<ConnectionConfig>, String> {
         let connections = self.load_connections()?;
         let mut result = Vec::new();
@@ -109,6 +120,9 @@ impl ConnectionStorage {
             }
             result.push(config);
         }
+        
+        // 按创建时间倒序排序（最新的在前）
+        result.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         
         Ok(result)
     }
@@ -179,7 +193,7 @@ impl ConnectionStorage {
             .map_err(|e| format!("导出连接配置失败: {}", e))
     }
 
-    /// 导入连接配置（按 host+port+username 去重合并）
+    /// 导入连接配置（自动处理名称重复，生成唯一名称）
     pub fn import_connections(&self, json_data: &str) -> Result<(), String> {
         let imported: HashMap<String, ConnectionConfig> = serde_json::from_str(json_data)
             .map_err(|e| format!("解析导入数据失败: {}", e))?;
@@ -190,17 +204,17 @@ impl ConnectionStorage {
             // 验证配置
             config.validate()?;
             
+            // 生成唯一的连接名称
+            let unique_name = Self::generate_unique_name(&existing, &config.name);
+            config.name = unique_name;
+            
             // 如果密码为空，保持为空；否则加密保存
             if let Some(password) = &config.password {
                 let encrypted_password = crypto::encrypt_password(password, &self.master_key)?;
                 config.password = Some(encrypted_password);
             }
 
-            if let Some(existing_id) = Self::find_existing_id_by_key(&existing, &config) {
-                existing.insert(existing_id, config);
-            } else {
-                existing.insert(config.id.clone(), config);
-            }
+            existing.insert(config.id.clone(), config);
         }
         
         self.save_connections(&existing)

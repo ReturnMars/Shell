@@ -32,12 +32,14 @@ pub fn run() {
             get_connections,
             execute_ssh_command,
             test_connection,
+            generate_uuid,
             save_connection,
             load_connection,
             delete_connection,
             get_saved_connections,
             export_connections,
-            import_connections
+            import_connections,
+            delete_all_connections
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

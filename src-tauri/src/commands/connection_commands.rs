@@ -52,9 +52,26 @@ pub async fn disconnect_all_ssh() -> Result<(), String> {
     service.disconnect_all().await
 }
 
+/// 生成UUID
+#[command]
+pub async fn generate_uuid() -> Result<String, String> {
+    Ok(uuid::Uuid::new_v4().to_string())
+}
+
 /// 测试连接（不保存）
 #[command]
 pub async fn test_connection(config: ConnectionConfig) -> Result<String, String> {
     let service = SSH_SERVICE.read().await;
-    service.connect(config).await
+    
+    // 建立连接进行测试
+    let connection_id = service.connect(config).await?;
+    
+    // 立即断开测试连接
+    drop(service); // 释放读锁
+    let service = SSH_SERVICE.read().await;
+    if let Err(e) = service.disconnect(&connection_id).await {
+        log::warn!("测试连接断开时出现警告: {}", e);
+    }
+    
+    Ok(format!("连接测试成功: {}", connection_id))
 }
