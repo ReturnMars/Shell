@@ -1,0 +1,219 @@
+// 连接配置存储服务
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::fs;
+use serde_json;
+use crate::models::ConnectionConfig;
+use crate::utils::{storage, crypto};
+
+/// 连接配置存储管理器
+pub struct ConnectionStorage {
+    config_dir: PathBuf,
+    connections_file: PathBuf,
+    master_key: Vec<u8>,
+}
+
+impl ConnectionStorage {
+    /// 创建新的存储管理器
+    pub fn new() -> Result<Self, String> {
+        let config_dir = storage::get_config_dir()?;
+        let connections_file = config_dir.join("connections.json");
+        
+        // 确保配置目录存在
+        if !config_dir.exists() {
+            fs::create_dir_all(&config_dir)
+                .map_err(|e| format!("创建配置目录失败: {}", e))?;
+        }
+
+        // 生成或加载主密钥
+        let master_key = Self::load_or_generate_master_key(&config_dir)?;
+
+        Ok(Self {
+            config_dir,
+            connections_file,
+            master_key,
+        })
+    }
+
+    /// 计算去重键（host+port+username）
+    fn dedup_key_of(config: &ConnectionConfig) -> String {
+        format!("{}:{}@{}", config.username, config.port, config.host)
+    }
+
+    /// 在现有连接中查找相同去重键的项，返回其id
+    fn find_existing_id_by_key(
+        connections: &HashMap<String, ConnectionConfig>,
+        candidate: &ConnectionConfig,
+    ) -> Option<String> {
+        let key = Self::dedup_key_of(candidate);
+        connections
+            .iter()
+            .find(|(_, cfg)| Self::dedup_key_of(cfg) == key)
+            .map(|(id, _)| id.clone())
+    }
+
+    /// 保存连接配置（按 host+port+username 去重，存在则覆盖）
+    pub fn save_connection(&self, config: &ConnectionConfig) -> Result<(), String> {
+        let mut connections = self.load_connections()?;
+
+        // 如果密码存在，加密保存
+        let mut config_to_save = config.clone();
+        if let Some(password) = &config.password {
+            let encrypted_password = crypto::encrypt_password(password, &self.master_key)?;
+            config_to_save.password = Some(encrypted_password);
+        }
+
+        // 去重：若已有相同(host,port,username)的记录，覆盖其id
+        if let Some(existing_id) = Self::find_existing_id_by_key(&connections, &config_to_save) {
+            connections.insert(existing_id, config_to_save);
+        } else {
+            connections.insert(config.id.clone(), config_to_save);
+        }
+
+        self.save_connections(&connections)
+    }
+
+    /// 加载连接配置
+    pub fn load_connection(&self, connection_id: &str) -> Result<ConnectionConfig, String> {
+        let connections = self.load_connections()?;
+        
+        if let Some(mut config) = connections.get(connection_id).cloned() {
+            // 如果密码存在，解密
+            if let Some(encrypted_password) = &config.password {
+                let decrypted_password = crypto::decrypt_password(encrypted_password, &self.master_key)?;
+                config.password = Some(decrypted_password);
+            }
+            Ok(config)
+        } else {
+            Err("连接配置不存在".to_string())
+        }
+    }
+
+    /// 删除连接配置
+    pub fn delete_connection(&self, connection_id: &str) -> Result<(), String> {
+        let mut connections = self.load_connections()?;
+        connections.remove(connection_id);
+        self.save_connections(&connections)
+    }
+
+    /// 获取所有连接配置（返回前解密密码）
+    pub fn get_all_connections(&self) -> Result<Vec<ConnectionConfig>, String> {
+        let connections = self.load_connections()?;
+        let mut result = Vec::new();
+        
+        for (_, mut config) in connections {
+            // 解密密码
+            if let Some(encrypted_password) = &config.password {
+                let decrypted_password = crypto::decrypt_password(encrypted_password, &self.master_key)?;
+                config.password = Some(decrypted_password);
+            }
+            result.push(config);
+        }
+        
+        Ok(result)
+    }
+
+    /// 保存所有连接配置
+    fn save_connections(&self, connections: &HashMap<String, ConnectionConfig>) -> Result<(), String> {
+        let json = serde_json::to_string_pretty(connections)
+            .map_err(|e| format!("序列化连接配置失败: {}", e))?;
+        
+        fs::write(&self.connections_file, json)
+            .map_err(|e| format!("写入连接配置文件失败: {}", e))?;
+        
+        log::info!("连接配置已保存到: {:?}", self.connections_file);
+        Ok(())
+    }
+
+    /// 加载所有连接配置
+    fn load_connections(&self) -> Result<HashMap<String, ConnectionConfig>, String> {
+        if !self.connections_file.exists() {
+            return Ok(HashMap::new());
+        }
+
+        let content = fs::read_to_string(&self.connections_file)
+            .map_err(|e| format!("读取连接配置文件失败: {}", e))?;
+
+        if content.trim().is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let connections: HashMap<String, ConnectionConfig> = serde_json::from_str(&content)
+            .map_err(|e| format!("解析连接配置文件失败: {}", e))?;
+
+        Ok(connections)
+    }
+
+    /// 加载或生成主密钥
+    fn load_or_generate_master_key(config_dir: &PathBuf) -> Result<Vec<u8>, String> {
+        let key_file = config_dir.join("master.key");
+        
+        if key_file.exists() {
+            // 加载现有密钥
+            let key_data = fs::read(&key_file)
+                .map_err(|e| format!("读取主密钥失败: {}", e))?;
+            Ok(key_data)
+        } else {
+            // 生成新密钥
+            let master_key = crypto::generate_master_key();
+            fs::write(&key_file, &master_key)
+                .map_err(|e| format!("保存主密钥失败: {}", e))?;
+            
+            log::info!("已生成新的主密钥: {:?}", key_file);
+            Ok(master_key)
+        }
+    }
+
+    /// 导出连接配置（不包含密码）
+    pub fn export_connections(&self) -> Result<String, String> {
+        let connections = self.load_connections()?;
+        let mut export_data = HashMap::new();
+        
+        for (id, mut config) in connections {
+            // 移除密码信息
+            config.password = None;
+            export_data.insert(id, config);
+        }
+        
+        serde_json::to_string_pretty(&export_data)
+            .map_err(|e| format!("导出连接配置失败: {}", e))
+    }
+
+    /// 导入连接配置（按 host+port+username 去重合并）
+    pub fn import_connections(&self, json_data: &str) -> Result<(), String> {
+        let imported: HashMap<String, ConnectionConfig> = serde_json::from_str(json_data)
+            .map_err(|e| format!("解析导入数据失败: {}", e))?;
+        
+        let mut existing = self.load_connections()?;
+        
+        for (_id, mut config) in imported {
+            // 验证配置
+            config.validate()?;
+            
+            // 如果密码为空，保持为空；否则加密保存
+            if let Some(password) = &config.password {
+                let encrypted_password = crypto::encrypt_password(password, &self.master_key)?;
+                config.password = Some(encrypted_password);
+            }
+
+            if let Some(existing_id) = Self::find_existing_id_by_key(&existing, &config) {
+                existing.insert(existing_id, config);
+            } else {
+                existing.insert(config.id.clone(), config);
+            }
+        }
+        
+        self.save_connections(&existing)
+    }
+
+    /// 删除全部连接配置
+    pub fn delete_all(&self) -> Result<(), String> {
+        self.save_connections(&HashMap::new())
+    }
+}
+
+impl Default for ConnectionStorage {
+    fn default() -> Self {
+        Self::new().expect("无法创建连接存储管理器")
+    }
+}

@@ -6,7 +6,7 @@
         <n-icon size="24" color="#18a058">
           <CodeOutlined />
         </n-icon>
-        <span>TerminalMars</span>
+        <span>ShellMars</span>
       </div>
     </div>
 
@@ -143,27 +143,30 @@
     </div>
 
     <!-- 侧边栏底部固定区域 -->
-    <div class="mt-auto border-t border-gray-200 bg-gray-50">
-      <div class="p-3">
-        <div class="flex flex-col gap-1">
-          <n-button quaternary block size="small" @click="showSettings">
-            <template #icon>
-              <n-icon>
-                <SettingOutlined />
-              </n-icon>
-            </template>
-            设置
-          </n-button>
-
-          <n-button quaternary block size="small" @click="showHelp">
-            <template #icon>
-              <n-icon>
-                <QuestionCircleOutlined />
-              </n-icon>
-            </template>
-            帮助
-          </n-button>
-        </div>
+    <div class="mt-auto border-t h-9 border-gray-200 bg-gray-50">
+      <div class="flex gap-1 p-[6px]">
+        <n-button
+          class="flex-1"
+          quaternary
+          block
+          size="tiny"
+          @click="showSettings"
+        >
+          <template #icon>
+            <n-icon>
+              <SettingOutlined />
+            </n-icon>
+          </template>
+          设置
+        </n-button>
+        <n-button class="flex-1" quaternary block size="tiny" @click="showHelp">
+          <template #icon>
+            <n-icon>
+              <QuestionCircleOutlined />
+            </n-icon>
+          </template>
+          帮助
+        </n-button>
       </div>
     </div>
   </div>

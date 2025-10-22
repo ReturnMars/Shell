@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    terminalmars_lib::run()
+    shell_mars_lib::run()
 }

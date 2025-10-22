@@ -1,0 +1,33 @@
+{
+  "excludeFiles": [
+    "dist/*",
+    "node_modules/*",
+    "src-tauri/target/*",
+    "src-tauri/gen/*",
+    "*.d.ts",
+    "auto-imports.d.ts",
+    "components.d.ts"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "style": "off",
+    "perf": "off",
+    "restriction": "off"
+  },
+  "rules": {
+    // 基础安全规则
+    "no-debugger": "error",
+    "no-eval": "error",
+    "no-alert": "off",
+    
+    // 基本代码质量
+    "no-unused-vars": "warn",
+    "no-undef": "off",
+    "prefer-const": "warn",
+    
+    // Vue 基础规则
+    "vue/no-multiple-template-root": "off",
+    "vue/multi-word-component-names": "off"
+  }
+}
