@@ -68,33 +68,22 @@
       <div class="tab-add-btn">
         <ConnectionForm>
           <template #trigger>
-            <n-icon size="22" class="mr-1.5">
-              <PlusOutlined />
-            </n-icon>
+            <n-button quaternary circle>
+              <template #icon>
+                <n-icon>
+                  <PlusOutlined />
+                </n-icon>
+              </template>
+            </n-button>
           </template>
         </ConnectionForm>
       </div>
       <!-- 文件管理器按钮 -->
-      <n-button
-        quaternary
-        circle
-        size="small"
-        @click="showFileManager"
-        class="mr-1"
-      >
+      <n-button quaternary circle @click="showFileManager" class="mr-1">
         <template #icon>
           <n-icon><FolderOutlined /></n-icon>
         </template>
       </n-button>
-
-      <!-- 标签页菜单 -->
-      <n-dropdown :options="tabMenuOptions" @select="handleTabMenuSelect">
-        <n-button quaternary circle size="small" class="mr-1">
-          <template #icon>
-            <n-icon><MoreOutlined /></n-icon>
-          </template>
-        </n-button>
-      </n-dropdown>
 
       <!-- 设置按钮 -->
       <n-dropdown
@@ -102,9 +91,17 @@
         @select="handleSettingsSelect"
         trigger="click"
       >
-        <n-button quaternary circle size="small">
+        <n-button quaternary circle>
           <template #icon>
             <n-icon><SettingOutlined /></n-icon>
+          </template>
+        </n-button>
+      </n-dropdown>
+      <!-- 标签页菜单 -->
+      <n-dropdown :options="tabMenuOptions" @select="handleTabMenuSelect">
+        <n-button quaternary circle>
+          <template #icon>
+            <n-icon><MoreOutlined /></n-icon>
           </template>
         </n-button>
       </n-dropdown>
@@ -260,19 +257,21 @@ const handleSettingsSelect = (key: string) => {
     align-items: center;
     padding: 0 8px;
     border-right: 1px solid #e0e0e0;
+    margin-right: 8px;
   }
 
   .tabs-container {
     flex: 1;
+    flex-shrink: 0;
     min-width: 0;
     height: 100%;
-    overflow: hidden;
+    overflow: auto;
 
     .tabs-list {
       display: flex;
       height: 100%;
       overflow-x: auto;
-
+      position: relative;
       .tab-item {
         display: flex;
         align-items: center;
@@ -297,7 +296,7 @@ const handleSettingsSelect = (key: string) => {
           background-color: #e3f2fd;
           // border-bottom: 1px solid #18a058;
           font-weight: bold;
-          position: relative;
+          position: position;
           &::before {
             content: "";
             position: absolute;

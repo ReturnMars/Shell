@@ -43,4 +43,7 @@ env_logger = "0.10"
 thiserror = "1.0"
 # 静态初始化
 lazy_static = "1.4"
+# 终端相关
+futures = "0.3"
+tokio-tungstenite = "0.20"
 

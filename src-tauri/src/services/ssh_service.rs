@@ -170,6 +170,25 @@ impl SshService {
             .collect()
     }
 
+    /// 获取SSH连接（用于终端服务）
+    pub async fn get_ssh_connection(&self, connection_id: &str) -> Result<SshConnection, String> {
+        let connections = self.connections.read().await;
+        
+        if let Some(connection) = connections.get(connection_id) {
+            // 克隆SSH连接信息
+            Ok(SshConnection {
+                id: connection.id.clone(),
+                config: connection.config.clone(),
+                session: connection.session.clone(),
+                status: connection.status.clone(),
+                sftp: None, // Sftp不能clone，暂时设为None
+                created_at: connection.created_at,
+            })
+        } else {
+            Err("SSH连接不存在".to_string())
+        }
+    }
+
     /// 执行SSH命令
     pub async fn execute_command(&self, connection_id: &str, command: &str) -> Result<String, String> {
         let mut connections = self.connections.write().await;

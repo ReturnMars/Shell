@@ -27,7 +27,19 @@
         </n-tooltip>
       </div>
       <div class="flex items-center gap-1">
-        <!-- 断开所有按钮 -->
+        <!-- 添加按钮 -->
+        <ConnectionForm>
+          <template #trigger>
+            <n-button quaternary circle size="tiny">
+              <template #icon>
+                <n-icon>
+                  <PlusOutlined />
+                </n-icon>
+              </template>
+            </n-button>
+          </template>
+        </ConnectionForm>
+        <!-- 断开所有链接按钮 -->
         <n-button
           v-if="connectionStore.connectedCount > 0"
           quaternary
@@ -39,15 +51,6 @@
           <template #icon>
             <n-icon>
               <DisconnectOutlined />
-            </n-icon>
-          </template>
-        </n-button>
-
-        <!-- 添加按钮 -->
-        <n-button quaternary circle size="tiny" @click="showAddConnection">
-          <template #icon>
-            <n-icon>
-              <PlusOutlined />
             </n-icon>
           </template>
         </n-button>
@@ -188,8 +191,10 @@ const showAddConnection = () => {
 // 设置当前选中的链接
 const selectConnection = async (connection: ConnectionConfig) => {
   // 检查该链接对应的标签页是否存在
-  const existingTab = connectionStore.tabs.find(tab => tab.connection_id === connection.id);
-  
+  const existingTab = connectionStore.tabs.find(
+    (tab) => tab.connection_id === connection.id
+  );
+
   if (existingTab) {
     // 如果标签页已存在，先激活标签页，再设置当前链接
     await connectionStore.setActiveTab(existingTab.id);
@@ -205,7 +210,7 @@ const selectConnection = async (connection: ConnectionConfig) => {
       console.error("创建标签页失败:", error);
     }
   }
-  
+
   console.log("设置当前选中的链接:", connection.name);
 };
 
@@ -235,12 +240,14 @@ const disconnectAll = async () => {
 const deleteConnection = async (connection: ConnectionConfig) => {
   try {
     // 先删除对应的标签页
-    const existingTab = connectionStore.tabs.find(tab => tab.connection_id === connection.id);
+    const existingTab = connectionStore.tabs.find(
+      (tab) => tab.connection_id === connection.id
+    );
     if (existingTab) {
       await connectionStore.removeTab(existingTab.id);
       console.log("已删除对应的标签页:", connection.name);
     }
-    
+
     // 再删除链接
     await connectionStore.deleteConnection(connection.id);
     console.log("已删除链接:", connection.name);

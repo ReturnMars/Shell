@@ -12,7 +12,7 @@
         <span>已连接数: {{ connectionStore.connectedCount }}</span>
       </div>
       <div class="flex items-center">
-        <span>ShellMars v1.0.0</span>
+        <span>ShellMars alpha-0.0.1</span>
       </div>
     </div>
   </n-layout-footer>

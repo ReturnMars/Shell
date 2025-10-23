@@ -1,12 +1,14 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- 侧边栏头部 -->
-    <div class="p-4 border-b border-gray-200">
+    <div
+      class="border-b border-gray-200 h-[45px] flex items-center justify-start pl-3"
+    >
       <div class="flex items-center gap-2 text-lg font-semibold text-gray-800">
         <n-icon size="24" color="#18a058">
           <CodeOutlined />
         </n-icon>
-        <span>ShellMars</span>
+        <span class="flex h-[1em]">ShellMars</span>
       </div>
     </div>
 

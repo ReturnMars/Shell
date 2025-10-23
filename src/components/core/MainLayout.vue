@@ -14,7 +14,7 @@
     </n-layout-sider>
 
     <!-- 主内容区域 -->
-    <div class="w-full flex flex-col h-screen">
+    <div class="w-full flex flex-col h-screen overflow-auto">
       <!-- 标签页区域 -->
       <TabBar 
         @toggle-sidebar="toggleSidebar"
@@ -23,7 +23,16 @@
 
       <!-- 内容区域 -->
       <n-layout-content class="flex-1 bg-gray-50 p-4 overflow-auto">
-        <slot name="main-content"></slot>
+        <!-- 主内容区域 -->
+        <div class="h-full flex items-center justify-center">
+          <n-empty description="请选择一个SSH连接">
+            <template #extra>
+              <n-button type="primary" @click="showConnectionForm = true">
+                创建连接
+              </n-button>
+            </template>
+          </n-empty>
+        </div>
       </n-layout-content>
 
       <!-- 底部状态栏 -->
@@ -40,7 +49,6 @@ import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import Sidebar from "./Sidebar.vue";
 import TabBar from "./TabBar.vue";
-import ConnectionStatus from "./ConnectionStatus.vue";
 import AppFooter from "./AppFooter.vue";
 import ConnectionForm from "../connection/ConnectionForm.vue";
 import { useMessage } from "naive-ui";
@@ -54,6 +62,9 @@ const showConnectionForm = ref(false);
 
 const message = useMessage();
 const connectionStore = useConnectionStore();
+
+// 引用
+// 移除了 terminalViewRef
 
 // 设置菜单选项已移动到 TabBar 组件
 
@@ -71,6 +82,8 @@ const handleSettingsSelect = async (key: string) => {
     await clearAllConnections();
   }
 };
+
+// 移除了终端相关的事件处理
 
 // 清理所有保存的链接
 const clearAllConnections = async () => {
