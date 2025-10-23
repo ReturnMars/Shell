@@ -38,7 +38,7 @@
 
         <!-- 当前输入行 - 使用textarea -->
         <div class="current-line" v-if="showPrompt">
-          <span class="prompt">{{ currentPrompt }}</span>
+          <span class="prompt" v-html="formatContent(currentPrompt)"></span>
           <textarea
             ref="inputTextarea"
             v-model="currentInput"
@@ -160,8 +160,15 @@ const connectSSH = async () => {
         )
       ) {
         addOutputLine("output", contentLine);
-        return;
       }
+      // const result = await executeCommand("whoami", false);
+      // const lines = result?.split("\n");
+      // if (!lines?.length) return;
+      // currentPrompt.value = lines[lines.length - 1];
+      // console.log("🚀 ~ connectSSH ~ lines:", lines);
+      // console.log("🚀 ~ connectSSH ~ result:", result);
+      getWhoiamAndPwd();
+      return;
     }
 
     // 先获取连接配置
@@ -180,7 +187,8 @@ const connectSSH = async () => {
     isConnected.value = true;
     addOutputLine("output", "SSH连接已建立");
     // 执行命令或者当前用户
-    await executeCommand("whoami", false);
+    const result = await executeCommand("whoami", false);
+    console.log("🚀 ~ connectSSH ~ result:", result);
     // currentPrompt.value = `${whoami}@${hostname}:~$ `;
     emit("connected", `session_${Date.now()}`);
   } catch (error) {
@@ -201,36 +209,55 @@ const addOutputLine = (
 
 // 执行命令
 const executeCommand = async (command: string, showCommand: boolean = true) => {
-  console.log("🚀 ~ executeCommand ~ command:", command);
   if (!command) return;
 
   // 添加到历史记录
   commandHistory.value.push(command);
   historyIndex.value = commandHistory.value.length;
 
-  // 显示命令
-  if (showCommand) {
-    addOutputLine("command", command, currentPrompt.value);
-  }
-
   // 清空当前输入
   currentInput.value = "";
   // output 输出
-  let output: string | null = null;
+  let output: string | undefined;
   try {
     // 处理特殊命令
     if (command === "clear") {
+      // 显示命令
+      if (showCommand) {
+        addOutputLine("command", command, currentPrompt.value);
+      }
       outputLines.value = [];
       return;
     }
 
     if (command === "exit") {
+      // 显示命令
+      if (showCommand) {
+        addOutputLine("command", command, currentPrompt.value);
+      }
+      
+      // 真正断开SSH连接
+      if (isConnected.value && props.connectionId) {
+        try {
+          await invoke("disconnect_ssh", {
+            connectionId: props.connectionId,
+          });
+          console.log("SSH连接已断开");
+        } catch (error) {
+          console.error("断开SSH连接失败:", error);
+        }
+      }
+      
       isConnected.value = false;
       addOutputLine("output", "连接已断开");
       emit("disconnected");
       return;
     }
 
+    // 显示命令（对于非特殊命令）
+    if (showCommand) {
+      addOutputLine("command", command, currentPrompt.value);
+    }
     // 执行SSH命令
     if (isConnected.value && props.connectionId) {
       output = await invoke<string>("execute_ssh_command", {
@@ -250,16 +277,16 @@ const executeCommand = async (command: string, showCommand: boolean = true) => {
         lines.pop();
         lines.shift();
         lines.forEach((line) => {
-          if (line.trim()) {
+          if (line.trim() && showCommand) {
             addOutputLine("output", line);
           }
         });
+        // 对于特定命令 更新用户信息和当前目录
+        if (shouldUpdatePrompt(command)) {
+          getWhoiamAndPwd(output);
+        }
       }
     } else {
-      console.log("🚀 ~ 执行本地模拟命令:", command);
-      console.log("🚀 ~ 连接状态:", isConnected.value);
-      console.log("🚀 ~ 连接ID:", props.connectionId);
-
       // 模拟本地命令
       output = await simulateLocalCommand(command);
       if (output) {
@@ -362,9 +389,102 @@ const handleKeyDown = async (event: KeyboardEvent) => {
       break;
   }
 };
+// 判断命令是否需要更新提示符
+const shouldUpdatePrompt = (command: string): boolean => {
+  const cmd = command.toLowerCase().trim();
+  
+  // 需要更新提示符的命令列表
+  const promptUpdateCommands = [
+    'cd',           // 改变目录
+    'su',           // 切换用户
+    'sudo',         // 以管理员权限执行
+    'login',        // 登录
+    'logout',       // 登出
+    'exit',         // 退出（可能影响提示符）
+    'bash',         // 启动新的bash会话
+    'zsh',          // 启动zsh会话
+    'sh',           // 启动sh会话
+    'source',       // 执行脚本文件
+    'exec',         // 执行命令
+    'env',          // 环境变量相关
+    'export',       // 导出环境变量
+    'unset',        // 取消环境变量
+    'alias',        // 设置别名
+    'unalias',      // 取消别名
+    'history',      // 历史命令（某些情况下可能影响提示符）
+  ];
+  
+  // 检查是否匹配需要更新的命令
+  for (const updateCmd of promptUpdateCommands) {
+    if (cmd === updateCmd || cmd.startsWith(updateCmd + ' ')) {
+      return true;
+    }
+  }
+  
+  // 特殊处理：cd命令的各种变体
+  if (cmd.startsWith('cd ') || cmd === 'cd') {
+    return true;
+  }
+  
+  // 特殊处理：su命令的各种变体
+  if (cmd.startsWith('su ') || cmd === 'su') {
+    return true;
+  }
+  
+  // 特殊处理：sudo命令的各种变体
+  if (cmd.startsWith('sudo ')) {
+    return true;
+  }
+  
+  return false;
+};
 
-const handleKeyUp = () => {
-  // 处理其他键盘事件
+// 获取用户信息和当前目录
+const getWhoiamAndPwd = async (result?: string) => {
+  let userResult = result;
+  try {
+    if (!result) {
+      // 获取用户名
+      userResult = await executeCommand("whoami", false);
+    }
+    console.log("🚀 ~ getWhoiamAndPwd ~ userResult:", userResult);
+
+    if (userResult === null || userResult === undefined) return;
+
+    // 正则表达式匹配提示符格式 [user@hostname directory]
+    const promptRegex =
+      /\[([a-zA-Z0-9_-]+@[a-zA-Z0-9_.-]+\s+[a-zA-Z0-9_./~-]+)\]/g;
+    const promptMatches = userResult?.match(promptRegex) || [];
+
+    if (promptMatches.length > 0) {
+      // 过滤掉包含ANSI转义序列的匹配项
+      const validPrompts = promptMatches.filter(
+        (match) =>
+          !match.includes("\x1b") &&
+          !match.includes("\u001b") &&
+          match.includes("@") &&
+          match.length < 100 // 限制长度，避免匹配到过长的内容
+      );
+
+      if (validPrompts.length > 0) {
+        const lastPrompt = validPrompts[validPrompts.length - 1];
+        currentPrompt.value = `${lastPrompt}# `;
+        console.log("🚀 ~ 提取的提示符:", lastPrompt);
+      } else {
+        // 如果没有找到有效提示符，使用默认值
+        currentPrompt.value = "user@localhost:~# ";
+        console.log("🚀 ~ 未找到有效提示符，使用默认值");
+      }
+    } else {
+      // 如果没有找到标准格式，使用默认提示符
+      currentPrompt.value = "user@localhost:~# ";
+      console.log("🚀 ~ 未找到提示符格式，使用默认值");
+    }
+  } catch (error) {
+    console.error("获取用户信息失败:", error);
+    // 使用默认提示符
+    currentPrompt.value = "user@localhost:~$ ";
+  }
 };
 
 // 处理输入事件
@@ -373,7 +493,7 @@ const handleInput = () => {
 };
 
 // 处理粘贴事件
-const handlePaste = (event: ClipboardEvent) => {
+const handlePaste = () => {
   // 让浏览器处理粘贴，这里可以添加额外逻辑
 };
 
