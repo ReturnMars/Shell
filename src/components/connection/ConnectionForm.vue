@@ -353,6 +353,8 @@ const handleConnect = async () => {
         await connectionStore.saveConnection(config);
         console.log("连接配置已自动保存");
         message.success("连接建立成功并已保存");
+        // 自动选择该连接
+        connectionStore.setCurrentConnection(config);
       } catch (saveError) {
         console.warn("自动保存失败:", saveError);
         message.warning(`连接成功，但保存失败: ${saveError}`);

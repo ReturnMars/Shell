@@ -74,10 +74,10 @@ export const useConnectionStore = defineStore("connection", () => {
         connections.value.splice(index, 1);
       }
 
-        // 如果删除的是当前连接，清空当前连接
-        if (currentConnection.value?.id === connectionId) {
-          currentConnection.value = null;
-        }
+      // 如果删除的是当前连接，清空当前连接
+      if (currentConnection.value?.id === connectionId) {
+        currentConnection.value = null;
+      }
 
       console.log("删除连接成功:", connectionId);
     } catch (err) {

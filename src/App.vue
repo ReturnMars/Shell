@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :theme-overrides="themeOverrides">
+  <n-config-provider :theme-overrides="themeOverrides" inline-theme-disabled>
     <n-message-provider>
       <MainLayout>
         <template #main-content>

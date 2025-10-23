@@ -31,9 +31,9 @@
         <div class="flex-1 min-w-0">
           <div
             :class="[
-              'connection-name font-medium text-[0.875rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200',
+              'connection-name font-medium text-[1rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200',
               connection.id === connectionStore.currentConnection?.id
-                ? 'text-green-600 font-bold text-[1rem]!'
+                ? 'text-green-600 font-bold'
                 : 'text-gray-800',
             ]"
           >
