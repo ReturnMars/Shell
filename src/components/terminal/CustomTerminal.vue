@@ -52,7 +52,7 @@
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
-            rows="1"
+        
           ></textarea>
         </div>
       </div>
