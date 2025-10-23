@@ -6,7 +6,8 @@ use tokio::sync::RwLock;
 use ssh2::{Session, Sftp};
 use std::net::TcpStream;
 use std::io::Read;
-use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession};
+use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo};
+use crate::services::connection_storage::ConnectionStorage;
 
 /// SSH连接管理器
 pub struct SshService {
@@ -14,6 +15,10 @@ pub struct SshService {
     connections: Arc<RwLock<HashMap<String, SshConnection>>>,
     /// 会话管理
     sessions: Arc<RwLock<HashMap<String, AppSession>>>,
+    /// 标签页管理
+    tabs: Arc<RwLock<HashMap<String, TabInfo>>>,
+    /// 连接存储管理器
+    storage: Arc<ConnectionStorage>,
 }
 
 /// SSH连接信息
@@ -28,11 +33,15 @@ pub struct SshConnection {
 
 impl SshService {
     /// 创建新的SSH服务实例
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self, String> {
+        let storage = ConnectionStorage::new()?;
+        
+        Ok(Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
             sessions: Arc::new(RwLock::new(HashMap::new())),
-        }
+            tabs: Arc::new(RwLock::new(HashMap::new())),
+            storage: Arc::new(storage),
+        })
     }
 
     /// 建立SSH连接
@@ -144,6 +153,23 @@ impl SshService {
         connections.values().map(|conn| conn.config.clone()).collect()
     }
 
+    /// 获取已连接数
+    pub async fn get_connected_count(&self) -> usize {
+        let connections = self.connections.read().await;
+        connections.values()
+            .filter(|conn| matches!(conn.status, ConnectionStatus::Connected))
+            .count()
+    }
+
+    /// 获取已连接的连接列表
+    pub async fn get_connected_connections(&self) -> Vec<ConnectionConfig> {
+        let connections = self.connections.read().await;
+        connections.values()
+            .filter(|conn| matches!(conn.status, ConnectionStatus::Connected))
+            .map(|conn| conn.config.clone())
+            .collect()
+    }
+
     /// 执行SSH命令
     pub async fn execute_command(&self, connection_id: &str, command: &str) -> Result<String, String> {
         let mut connections = self.connections.write().await;
@@ -223,10 +249,162 @@ impl SshService {
 
         Ok(())
     }
+
+    /// 获取标签页列表
+    pub async fn get_tabs_list(&self) -> Result<Vec<TabInfo>, String> {
+        // 从持久化存储加载标签页
+        let tabs = self.storage.load_tabs()?;
+        
+        // 更新内存中的标签页
+        {
+            let mut memory_tabs = self.tabs.write().await;
+            *memory_tabs = tabs.clone();
+        }
+        
+        // 按创建时间倒序排序（最新的在前）
+        let mut tab_list: Vec<TabInfo> = tabs.values().cloned().collect();
+        tab_list.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        
+        Ok(tab_list)
+    }
+
+    /// 添加标签页
+    pub async fn add_tab(&self, connection_id: String, title: String) -> Result<String, String> {
+        // 从持久化存储检查是否已存在相同链接的标签页
+        let existing_tab = {
+            let tabs = self.storage.load_tabs()?;
+            tabs.values().find(|t| t.connection_id == connection_id).cloned()
+        };
+
+        if let Some(existing) = existing_tab {
+            // 如果已存在，直接激活
+            self.set_active_tab(&existing.id).await?;
+            return Ok(existing.id);
+        }
+
+        // 创建新标签页
+        let tab = TabInfo::new(connection_id, title);
+        let tab_id = tab.id.clone();
+        
+        // 保存到持久化存储
+        self.storage.add_tab(tab.clone())?;
+        
+        // 更新内存中的标签页
+        {
+            let mut tabs = self.tabs.write().await;
+            tabs.insert(tab_id.clone(), tab);
+            
+            // 取消其他标签页的激活状态
+            for tab in tabs.values_mut() {
+                tab.active = false;
+            }
+            
+            // 激活新标签页
+            if let Some(tab) = tabs.get_mut(&tab_id) {
+                tab.active = true;
+            }
+        }
+
+        log::info!("添加标签页成功: {}", tab_id);
+        Ok(tab_id)
+    }
+
+    /// 删除标签页
+    pub async fn remove_tab(&self, tab_id: &str) -> Result<(), String> {
+        // 从持久化存储删除
+        self.storage.remove_tab(tab_id)?;
+        
+        // 从内存中删除
+        let mut tabs = self.tabs.write().await;
+        
+        if let Some(removed_tab) = tabs.remove(tab_id) {
+            // 如果删除的是活动标签页，激活下一个标签页
+            if removed_tab.active && !tabs.is_empty() {
+                if let Some(next_tab) = tabs.values().next() {
+                    let next_tab_id = next_tab.id.clone();
+                    drop(tabs); // 释放锁
+                    self.storage.set_active_tab(&next_tab_id)?;
+                }
+            }
+            log::info!("删除标签页成功: {}", tab_id);
+            Ok(())
+        } else {
+            Err("标签页不存在".to_string())
+        }
+    }
+
+    /// 设置活动标签页
+    pub async fn set_active_tab(&self, tab_id: &str) -> Result<(), String> {
+        // 更新持久化存储中的活动状态
+        self.storage.set_active_tab(tab_id)?;
+        
+        // 更新内存中的活动状态
+        let mut tabs = self.tabs.write().await;
+        
+        // 先取消所有标签页的激活状态
+        for tab in tabs.values_mut() {
+            tab.active = false;
+        }
+        
+        // 激活指定标签页
+        if let Some(tab) = tabs.get_mut(tab_id) {
+            tab.active = true;
+            tab.update();
+            log::info!("设置活动标签页: {}", tab_id);
+            Ok(())
+        } else {
+            Err("标签页不存在".to_string())
+        }
+    }
+
+    /// 获取活动标签页
+    pub async fn get_active_tab(&self) -> Option<TabInfo> {
+        let tabs = self.tabs.read().await;
+        tabs.values().find(|t| t.active).cloned()
+    }
+
+    /// 关闭所有标签页
+    pub async fn close_all_tabs(&self) -> Result<(), String> {
+        // 清空持久化存储
+        self.storage.clear_all_tabs()?;
+        
+        // 清空内存
+        let mut tabs = self.tabs.write().await;
+        tabs.clear();
+        log::info!("关闭所有标签页");
+        Ok(())
+    }
+
+    /// 关闭其他标签页
+    pub async fn close_other_tabs(&self, keep_tab_id: &str) -> Result<(), String> {
+        let mut tabs = self.tabs.write().await;
+        
+        if let Some(keep_tab) = tabs.get(keep_tab_id).cloned() {
+            // 清空持久化存储
+            self.storage.clear_all_tabs()?;
+            
+            // 重新添加要保留的标签页
+            self.storage.add_tab(keep_tab.clone())?;
+            
+            // 更新内存
+            tabs.clear();
+            tabs.insert(keep_tab_id.to_string(), keep_tab);
+            log::info!("关闭其他标签页，保留: {}", keep_tab_id);
+            Ok(())
+        } else {
+            Err("要保留的标签页不存在".to_string())
+        }
+    }
+
+    /// 根据链接ID获取标签页
+    pub async fn get_tab_by_connection_id(&self, connection_id: &str) -> Option<TabInfo> {
+        let tabs = self.tabs.read().await;
+        tabs.values().find(|t| t.connection_id == connection_id).cloned()
+    }
 }
 
 impl Default for SshService {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("无法创建SSH服务")
     }
 }

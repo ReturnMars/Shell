@@ -1,6 +1,58 @@
 <template>
   <!-- 连接项列表 -->
   <div class="flex flex-col gap-1">
+    <!-- 标题栏 -->
+    <div
+      class="flex items-center justify-between mb-3 sticky top-0 bg-white z-10"
+    >
+      <div>
+        <span
+          class="text-medium font-medium text-gray-600 uppercase tracking-wider"
+        >
+          链接管理
+        </span>
+        <!-- 统计信息提示 -->
+        <n-tooltip trigger="hover" placement="right">
+          <template #trigger>
+            <span class="text-xs text-gray-400 cursor-help">
+              {{ connectionStore.connectedCount }}/{{
+                connectionStore.connectionCount
+              }}
+            </span>
+          </template>
+          <div class="text-xs">
+            <div>总链接数: {{ connectionStore.connectionCount }}</div>
+            <div>已连接: {{ connectionStore.connectedCount }}</div>
+          </div>
+        </n-tooltip>
+      </div>
+      <div class="flex items-center gap-1">
+        <!-- 断开所有按钮 -->
+        <n-button
+          v-if="connectionStore.connectedCount > 0"
+          quaternary
+          circle
+          size="tiny"
+          type="error"
+          @click="disconnectAll"
+        >
+          <template #icon>
+            <n-icon>
+              <DisconnectOutlined />
+            </n-icon>
+          </template>
+        </n-button>
+
+        <!-- 添加按钮 -->
+        <n-button quaternary circle size="tiny" @click="showAddConnection">
+          <template #icon>
+            <n-icon>
+              <PlusOutlined />
+            </n-icon>
+          </template>
+        </n-button>
+      </div>
+    </div>
     <n-card
       v-for="connection in connectionStore.connections"
       :key="connection.id"
@@ -23,6 +75,10 @@
         <!-- 连接状态指示器 -->
         <ConnectionStatus
           :connected="connection.connected"
+          :loading="
+            connectionStore.loading &&
+            connectionStore.currentConnection?.id === connection.id
+          "
           size="small"
           statusOnly
         />
@@ -50,28 +106,57 @@
         <div
           class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         >
+          <!-- 断开连接按钮 -->
           <n-button
+            v-if="connection.connected"
             quaternary
             size="tiny"
-            @click.stop="editConnection(connection)"
+            type="error"
+            @click="disconnectConnection(connection)"
+            :loading="
+              connectionStore.loading &&
+              connectionStore.currentConnection?.id === connection.id
+            "
           >
             <template #icon>
               <n-icon>
-                <EditOutlined />
+                <DisconnectOutlined />
               </n-icon>
             </template>
           </n-button>
-          <n-button
-            quaternary
-            size="tiny"
-            @click.stop="deleteConnection(connection)"
+
+          <!-- 编辑按钮 -->
+          <ConnectionForm :connection="connection">
+            <template #trigger>
+              <n-button quaternary size="tiny">
+                <template #icon>
+                  <n-icon>
+                    <EditOutlined />
+                  </n-icon>
+                </template>
+              </n-button>
+            </template>
+          </ConnectionForm>
+
+          <!-- 删除按钮 -->
+          <n-popconfirm
+            placement="right"
+            @positive-click="deleteConnection(connection)"
           >
-            <template #icon>
-              <n-icon>
-                <DeleteOutlined />
-              </n-icon>
+            <template #trigger>
+              <n-button quaternary size="tiny">
+                <template #icon>
+                  <n-icon>
+                    <DeleteOutlined />
+                  </n-icon>
+                </template>
+              </n-button>
             </template>
-          </n-button>
+            <div class="leading-6">
+              <p>确定要删除链接 "{{ connection.name }}" 吗？</p>
+              <p>删除后将无法恢复!</p>
+            </div>
+          </n-popconfirm>
         </div>
       </div>
     </n-card>
@@ -81,30 +166,86 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { ConnectionConfig, useConnectionStore } from "@/stores/connection";
-import { EditOutlined, DeleteOutlined } from "@vicons/antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  DisconnectOutlined,
+  PlusOutlined,
+} from "@vicons/antd";
+import { useMessage, NTooltip } from "naive-ui";
 
 const connectionStore = useConnectionStore();
+const message = useMessage();
 
-// 设置当前连接
-const selectConnection = (connection: ConnectionConfig) => {
-  connectionStore.setCurrentConnection(connection);
-  console.log("设置当前连接:", connection.name);
+// 显示添加连接对话框
+const showAddConnection = () => {
+  // 直接在这里处理添加连接逻辑
+  // 可以通过全局状态或者其他方式来处理
+  console.log("显示添加连接对话框");
+  // TODO: 实现添加连接逻辑
 };
 
-// 编辑连接
-const editConnection = (connection: ConnectionConfig) => {
-  console.log("编辑连接:", connection.name);
-  // TODO: 打开编辑表单
-};
-
-// 删除连接
-const deleteConnection = async (connection: ConnectionConfig) => {
-  if (confirm(`确定要删除连接 "${connection.name}" 吗？`)) {
+// 设置当前选中的链接
+const selectConnection = async (connection: ConnectionConfig) => {
+  // 检查该链接对应的标签页是否存在
+  const existingTab = connectionStore.tabs.find(tab => tab.connection_id === connection.id);
+  
+  if (existingTab) {
+    // 如果标签页已存在，先激活标签页，再设置当前链接
+    await connectionStore.setActiveTab(existingTab.id);
+    await connectionStore.setCurrentConnection(connection);
+    console.log("激活已存在的标签页:", connection.name);
+  } else {
+    // 如果标签页不存在，先设置当前链接，再创建新标签页
+    await connectionStore.setCurrentConnection(connection);
     try {
-      await connectionStore.deleteConnection(connection.id);
+      await connectionStore.addTab(connection);
+      console.log("创建新标签页:", connection.name);
     } catch (error) {
-      console.error("删除连接失败:", error);
+      console.error("创建标签页失败:", error);
     }
+  }
+  
+  console.log("设置当前选中的链接:", connection.name);
+};
+
+// 断开单个连接
+const disconnectConnection = async (connection: ConnectionConfig) => {
+  try {
+    await connectionStore.disconnect(connection.id);
+    message.success(`已断开连接: ${connection.name}`);
+  } catch (error) {
+    console.error("断开连接失败:", error);
+    message.error(`断开连接失败: ${error}`);
+  }
+};
+
+// 断开所有连接
+const disconnectAll = async () => {
+  try {
+    await connectionStore.disconnectAll();
+    message.success("已断开所有连接");
+  } catch (error) {
+    console.error("断开所有连接失败:", error);
+    message.error(`断开所有连接失败: ${error}`);
+  }
+};
+
+// 删除链接
+const deleteConnection = async (connection: ConnectionConfig) => {
+  try {
+    // 先删除对应的标签页
+    const existingTab = connectionStore.tabs.find(tab => tab.connection_id === connection.id);
+    if (existingTab) {
+      await connectionStore.removeTab(existingTab.id);
+      console.log("已删除对应的标签页:", connection.name);
+    }
+    
+    // 再删除链接
+    await connectionStore.deleteConnection(connection.id);
+    console.log("已删除链接:", connection.name);
+  } catch (error) {
+    console.error("删除链接失败:", error);
   }
 };
 

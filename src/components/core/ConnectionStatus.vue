@@ -5,9 +5,9 @@
     :class="[
       'rounded-full transition-colors',
       statusOnlySizeClasses[size],
-      connected ? 'bg-green-500' : 'bg-gray-400',
+      loading ? 'bg-blue-500 animate-pulse' : connected ? 'bg-green-500' : 'bg-gray-400',
     ]"
-    :title="connected ? '已连接' : '未连接'"
+    :title="loading ? '连接中...' : connected ? '已连接' : '未连接'"
   ></div>
 
   <!-- 完整状态标签模式 -->
@@ -16,22 +16,31 @@
     :class="[
       'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors',
       sizeClasses[size],
-      connected
+      loading
+        ? 'bg-blue-100 text-blue-800 border border-blue-200 animate-pulse'
+        : connected
         ? 'bg-green-100 text-green-800 border border-green-200'
         : 'bg-gray-100 text-gray-600 border border-gray-200',
     ]"
   >
     <CheckCircleOutlined
-      v-if="connected"
+      v-if="connected && !loading"
       :class="iconSizeClasses[size]"
       class="text-green-600"
     />
     <InfoCircleOutlined
-      v-else
+      v-else-if="!loading"
       :class="iconSizeClasses[size]"
       class="text-gray-500"
     />
-    <span v-if="showText">{{ connected ? "已连接" : "未连接" }}</span>
+    <div
+      v-else
+      :class="[iconSizeClasses[size], 'animate-spin']"
+      class="text-blue-600"
+    >
+      ⏳
+    </div>
+    <span v-if="showText">{{ loading ? "连接中..." : connected ? "已连接" : "未连接" }}</span>
   </div>
 </template>
 
@@ -40,6 +49,7 @@ import { CheckCircleOutlined, InfoCircleOutlined } from "@vicons/antd";
 
 interface Props {
   connected: boolean | undefined;
+  loading?: boolean;
   size?: "small" | "medium" | "large" | "tiny";
   showText?: boolean;
   statusOnly?: boolean;

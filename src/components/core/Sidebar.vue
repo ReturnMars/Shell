@@ -12,24 +12,8 @@
 
     <!-- 连接列表 -->
     <div class="flex flex-col flex-1 overflow-y-auto p-2">
-      <!-- 快速连接区域 -->
+      <!-- 链接管理区域 -->
       <div class="mb-4 max-h-[70%] overflow-y-auto relative">
-        <div
-          class="flex items-center justify-between mb-2 sticky top-0 bg-white z-10"
-        >
-          <span
-            class="text-xs font-medium text-gray-600 uppercase tracking-wider"
-            >快速连接</span
-          >
-          <n-button quaternary circle size="small" @click="showAddConnection">
-            <template #icon>
-              <n-icon>
-                <PlusOutlined />
-              </n-icon>
-            </template>
-          </n-button>
-        </div>
-
         <ConnectionList />
       </div>
 
@@ -105,20 +89,16 @@
 
 <script setup lang="ts">
 import {
-  PlusOutlined,
   CloudServerOutlined,
   FileTextOutlined,
   SettingOutlined,
   QuestionCircleOutlined,
   CodeOutlined,
+  PlusOutlined,
 } from "@vicons/antd";
 import ConnectionList from "../connection/ConnectionList.vue";
 
 // 方法
-
-const showAddConnection = () => {
-  console.log("显示添加连接对话框");
-};
 
 const showSettings = () => {
   console.log("显示设置对话框");

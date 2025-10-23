@@ -1,115 +1,140 @@
 <template>
-  <n-modal
-    v-model:show="showModal"
-    preset="dialog"
-    title="SSH连接配置"
-    @after-leave="closeModal"
-  >
-    <n-form
-      ref="formRef"
-      :model="formData"
-      :rules="rules"
-      label-placement="left"
-      label-width="auto"
-      require-mark-placement="right-hanging"
-    >
-      <n-form-item label="连接名称" path="name">
-        <n-input v-model:value="formData.name" placeholder="请输入连接名称" />
-      </n-form-item>
-
-      <n-form-item label="主机地址" path="host">
-        <n-input
-          v-model:value="formData.host"
-          placeholder="请输入主机IP或域名"
-        />
-      </n-form-item>
-
-      <n-form-item label="端口" path="port">
-        <n-input-number
-          v-model:value="formData.port"
-          :min="1"
-          :max="65535"
-          placeholder="22"
-        />
-      </n-form-item>
-
-      <n-form-item label="用户名" path="username">
-        <n-input v-model:value="formData.username" placeholder="请输入用户名" />
-      </n-form-item>
-
-      <n-form-item label="认证方式" path="auth_method">
-        <n-select v-model:value="formData.auth_method" :options="authOptions" />
-      </n-form-item>
-
-      <n-form-item
-        v-if="
-          formData.auth_method === 'Password' || formData.auth_method === 'Both'
-        "
-        label="密码"
-        path="password"
-      >
-        <n-input
-          v-model:value="formData.password"
-          type="password"
-          placeholder="请输入密码"
-          show-password-on="click"
-        />
-      </n-form-item>
-
-      <n-form-item
-        v-if="
-          formData.auth_method === 'PrivateKey' ||
-          formData.auth_method === 'Both'
-        "
-        label="私钥路径"
-        path="private_key_path"
-      >
-        <n-input
-          v-model:value="formData.private_key_path"
-          placeholder="请输入私钥文件路径"
-        />
-      </n-form-item>
-    </n-form>
-
-    <template #action>
-      <n-space>
-        <n-button size="small" @click="showModal = false">取消</n-button>
-        <n-button
-          :type="getTestButtonType"
-          @click="handleTest"
-          :loading="testing"
-          :disabled="connecting"
-          size="small"
-        >
-          <template #icon v-if="isTested">
-            <n-icon>
-              <CheckCircleOutlined v-if="testStatus === 'success'" />
-              <CloseCircleOutlined v-else-if="testStatus === 'error'" />
-            </n-icon>
-          </template>
-          {{ getTestButtonText }}
-        </n-button>
-        <n-button
-          type="success"
-          size="small"
-          @click="handleConnect"
-          :loading="connecting"
-          :disabled="testing || testStatus !== 'success'"
-        >
-          连接
-        </n-button>
-        <n-button
-          type="info"
-          size="small"
-          @click="handleTestCommand"
-          :loading="executingCommand"
-          :disabled="testing || connecting || testStatus !== 'success'"
-        >
-          测试命令
-        </n-button>
-      </n-space>
+  <div>
+    <template v-if="'trigger' in $slots">
+      <div class="trigger-button" @click="showModal = true">
+        <slot name="trigger"></slot>
+      </div>
     </template>
-  </n-modal>
+    <n-modal
+      v-model:show="showModal"
+      preset="dialog"
+      title="SSH链接配置"
+      @after-leave="closeModal"
+    >
+      <n-form
+        ref="formRef"
+        :model="formData"
+        :rules="rules"
+        label-placement="left"
+        label-width="auto"
+        require-mark-placement="right-hanging"
+      >
+        <n-form-item label="链接名称" path="name">
+          <n-input v-model:value="formData.name" placeholder="请输入链接名称" />
+        </n-form-item>
+
+        <n-form-item label="主机地址" path="host">
+          <n-input
+            v-model:value="formData.host"
+            placeholder="请输入主机IP或域名"
+          />
+        </n-form-item>
+
+        <n-form-item label="端口" path="port">
+          <n-input-number
+            v-model:value="formData.port"
+            :min="1"
+            :max="65535"
+            placeholder="22"
+          />
+        </n-form-item>
+
+        <n-form-item label="用户名" path="username">
+          <n-input
+            v-model:value="formData.username"
+            placeholder="请输入用户名"
+          />
+        </n-form-item>
+
+        <n-form-item label="认证方式" path="auth_method">
+          <n-select
+            v-model:value="formData.auth_method"
+            :options="authOptions"
+          />
+        </n-form-item>
+
+        <n-form-item
+          v-if="
+            formData.auth_method === 'Password' ||
+            formData.auth_method === 'Both'
+          "
+          label="密码"
+          path="password"
+        >
+          <n-input
+            v-model:value="formData.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password-on="click"
+          />
+        </n-form-item>
+
+        <n-form-item
+          v-if="
+            formData.auth_method === 'PrivateKey' ||
+            formData.auth_method === 'Both'
+          "
+          label="私钥路径"
+          path="private_key_path"
+        >
+          <n-input
+            v-model:value="formData.private_key_path"
+            placeholder="请输入私钥文件路径"
+          />
+        </n-form-item>
+      </n-form>
+
+      <template #action>
+        <div class="flex items-center gap-2">
+          <n-button size="small" @click="showModal = false">取消</n-button>
+          <!-- update 链接 -->
+          <n-button
+            v-if="isEdit"
+            type="primary"
+            size="small"
+            @click="handleSave"
+          >
+            保存
+          </n-button>
+          <n-button
+            :type="getTestButtonType"
+            @click="handleTest"
+            :loading="testing"
+            :disabled="connecting"
+            size="small"
+          >
+            <template #icon v-if="isTested">
+              <n-icon>
+                <CheckCircleOutlined v-if="testStatus === 'success'" />
+                <CloseCircleOutlined v-else-if="testStatus === 'error'" />
+              </n-icon>
+            </template>
+            {{ getTestButtonText }}
+          </n-button>
+          <n-button
+            type="info"
+            size="small"
+            @click="handleTestCommand"
+            :loading="executingCommand"
+            :disabled="isExecutingDisabled"
+          >
+            测试命令
+          </n-button>
+          <template v-if="!isEdit">
+            <n-button
+              type="success"
+              size="small"
+              @click="handleConnect"
+              :loading="connecting"
+              :disabled="testing || isExecutingDisabled"
+            >
+              连接服务器
+            </n-button>
+          </template>
+        </div>
+      </template>
+    </n-modal>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -118,13 +143,17 @@ import type { FormInst, FormRules } from "naive-ui";
 import { useMessage } from "naive-ui";
 import { CheckCircleOutlined, CloseCircleOutlined } from "@vicons/antd";
 import { Type } from "naive-ui/es/button/src/interface";
-import type { AuthMethod, ConnectionForm, ConnectionConfig } from "@/stores/connection";
+import type {
+  AuthMethod,
+  ConnectionForm,
+  ConnectionConfig,
+} from "@/stores/connection";
 import { useConnectionStore } from "@/stores/connection";
 
 // Props
 interface Props {
-  show: boolean;
-  editConnection?: ConnectionConfig | null;
+  show?: boolean;
+  connection?: ConnectionConfig;
 }
 
 // 获取 props
@@ -135,6 +164,7 @@ const emit = defineEmits<{
   connected: [connectionId: string];
   tested: [result: string];
   updated: [connection: ConnectionConfig];
+  saved: [connection: ConnectionConfig];
 }>();
 
 // 使用 Pinia store
@@ -151,7 +181,10 @@ const executingCommand = ref(false);
 
 // 计算属性
 const isTested = computed(() => testStatus.value !== "idle");
-
+const isEdit = computed(() => !!props.connection?.id);
+const isExecutingDisabled = computed(
+  () => testing.value || connecting.value || executingCommand.value
+);
 // 表单数据
 const baseFormData: ConnectionForm = {
   name: "wzd",
@@ -163,7 +196,9 @@ const baseFormData: ConnectionForm = {
   auth_method: "Password" as AuthMethod,
 };
 
-const formData = ref<ConnectionForm>(structuredClone(baseFormData));
+// 表单数据类型：编辑时使用 ConnectionConfig，新建时使用 ConnectionForm
+type FormData = ConnectionForm | ConnectionConfig;
+const formData = ref<FormData>(structuredClone(baseFormData));
 
 // 认证方式选项
 const authOptions = [
@@ -257,7 +292,7 @@ const getTestButtonText = computed(() => {
   return "测试连接";
 });
 
-// 生成连接配置
+// 生成链接配置
 const generateConfig = async (): Promise<ConnectionConfig> => {
   return {
     id: (await connectionStore.generateUuid()) as string,
@@ -309,7 +344,7 @@ const handleTestCommand = async () => {
     executingCommand.value = true;
 
     const config = await generateConfig();
-    
+
     // 先建立连接
     const connectResult = await connectionStore.connect(config);
     if (!connectResult.success) {
@@ -317,7 +352,10 @@ const handleTestCommand = async () => {
     }
 
     // 执行测试命令
-    const result = await connectionStore.executeCommand(config.id, "echo 'Hello from SSH!'");
+    const result = await connectionStore.executeCommand(
+      config.id,
+      "echo 'Hello from SSH!'"
+    );
 
     // 执行完命令后断开连接
     try {
@@ -351,10 +389,8 @@ const handleConnect = async () => {
       // 连接成功后自动保存
       try {
         await connectionStore.saveConnection(config);
-        console.log("连接配置已自动保存");
+        console.log("链接配置已自动保存");
         message.success("连接建立成功并已保存");
-        // 自动选择该连接
-        connectionStore.setCurrentConnection(config);
       } catch (saveError) {
         console.warn("自动保存失败:", saveError);
         message.warning(`连接成功，但保存失败: ${saveError}`);
@@ -371,6 +407,45 @@ const handleConnect = async () => {
     message.error(`连接建立失败: ${error}`);
   } finally {
     connecting.value = false;
+  }
+};
+
+// 保存链接
+const handleSave = async () => {
+  if (!formRef.value) return;
+
+  try {
+    await formRef.value.validate();
+
+    if (isEdit.value && props.connection) {
+      // 编辑模式：更新现有链接
+      const updatedConfig: ConnectionConfig = {
+        ...props.connection,
+        name: formData.value.name,
+        host: formData.value.host,
+        port: formData.value.port,
+        username: formData.value.username,
+        password: formData.value.password || null,
+        private_key_path: formData.value.private_key_path || null,
+        auth_method: formData.value.auth_method,
+        updated_at: new Date().toISOString(),
+      };
+
+      await connectionStore.updateConnection(updatedConfig);
+      message.success("链接更新成功");
+      emit("updated", updatedConfig);
+      showModal.value = false;
+    } else {
+      // 新建模式：创建新链接
+      const config = await generateConfig();
+      await connectionStore.saveConnection(config);
+      message.success("链接保存成功");
+      emit("saved", config);
+      showModal.value = false;
+    }
+  } catch (error) {
+    console.error("保存链接失败:", error);
+    message.error(`保存链接失败: ${error}`);
   }
 };
 
@@ -393,17 +468,22 @@ const resetForm = () => {
 watch(
   () => showModal.value,
   (newValue) => {
-    if (newValue && props.editConnection) {
+    if (newValue && props.connection) {
       // 编辑模式：填充现有连接数据
       formData.value = {
-        name: props.editConnection.name,
-        host: props.editConnection.host,
-        port: props.editConnection.port,
-        username: props.editConnection.username,
-        password: props.editConnection.password || "",
-        private_key_path: props.editConnection.private_key_path || "",
-        auth_method: props.editConnection.auth_method,
-      };
+        id: props.connection.id,
+        name: props.connection.name,
+        host: props.connection.host,
+        port: props.connection.port,
+        username: props.connection.username,
+        password: props.connection.password || "",
+        private_key_path: props.connection.private_key_path || "",
+        auth_method: props.connection.auth_method,
+        created_at: props.connection.created_at,
+        updated_at: props.connection.updated_at,
+        connected: props.connection.connected,
+        active: props.connection.active,
+      } as ConnectionConfig;
     } else if (newValue) {
       // 新建模式：重置表单
       resetForm();

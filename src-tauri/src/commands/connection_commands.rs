@@ -1,13 +1,15 @@
 // SSH连接相关的Tauri命令
 use tauri::command;
-use crate::models::{ConnectionConfig, ConnectionStatus};
+use crate::models::{ConnectionConfig, ConnectionStatus, TabInfo};
 use crate::services::SshService;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 // 全局SSH服务实例
 lazy_static::lazy_static! {
-    static ref SSH_SERVICE: Arc<RwLock<SshService>> = Arc::new(RwLock::new(SshService::new()));
+    static ref SSH_SERVICE: Arc<RwLock<SshService>> = Arc::new(RwLock::new(
+        SshService::new().expect("无法创建SSH服务")
+    ));
 }
 
 /// 建立SSH连接
@@ -36,6 +38,20 @@ pub async fn get_connection_status(connection_id: String) -> Result<ConnectionSt
 pub async fn get_connections() -> Result<Vec<ConnectionConfig>, String> {
     let service = SSH_SERVICE.read().await;
     Ok(service.get_connections().await)
+}
+
+/// 获取已连接数
+#[command]
+pub async fn get_connected_count() -> Result<usize, String> {
+    let service = SSH_SERVICE.read().await;
+    Ok(service.get_connected_count().await)
+}
+
+/// 获取已连接的连接列表
+#[command]
+pub async fn get_connected_connections() -> Result<Vec<ConnectionConfig>, String> {
+    let service = SSH_SERVICE.read().await;
+    Ok(service.get_connected_connections().await)
 }
 
 /// 执行SSH命令
@@ -74,4 +90,60 @@ pub async fn test_connection(config: ConnectionConfig) -> Result<String, String>
     }
     
     Ok(format!("连接测试成功: {}", connection_id))
+}
+
+/// 获取标签页列表
+#[command]
+pub async fn get_tabs_list() -> Result<Vec<TabInfo>, String> {
+    let service = SSH_SERVICE.read().await;
+    service.get_tabs_list().await
+}
+
+/// 添加标签页
+#[command]
+pub async fn add_tab(connection_id: String, title: String) -> Result<String, String> {
+    let service = SSH_SERVICE.read().await;
+    service.add_tab(connection_id, title).await
+}
+
+/// 删除标签页
+#[command]
+pub async fn remove_tab(tab_id: String) -> Result<(), String> {
+    let service = SSH_SERVICE.read().await;
+    service.remove_tab(&tab_id).await
+}
+
+/// 设置活动标签页
+#[command]
+pub async fn set_active_tab(tab_id: String) -> Result<(), String> {
+    let service = SSH_SERVICE.read().await;
+    service.set_active_tab(&tab_id).await
+}
+
+/// 获取活动标签页
+#[command]
+pub async fn get_active_tab() -> Result<Option<TabInfo>, String> {
+    let service = SSH_SERVICE.read().await;
+    Ok(service.get_active_tab().await)
+}
+
+/// 关闭所有标签页
+#[command]
+pub async fn close_all_tabs() -> Result<(), String> {
+    let service = SSH_SERVICE.read().await;
+    service.close_all_tabs().await
+}
+
+/// 关闭其他标签页
+#[command]
+pub async fn close_other_tabs(keep_tab_id: String) -> Result<(), String> {
+    let service = SSH_SERVICE.read().await;
+    service.close_other_tabs(&keep_tab_id).await
+}
+
+/// 根据链接ID获取标签页
+#[command]
+pub async fn get_tab_by_connection_id(connection_id: String) -> Result<Option<TabInfo>, String> {
+    let service = SSH_SERVICE.read().await;
+    Ok(service.get_tab_by_connection_id(&connection_id).await)
 }

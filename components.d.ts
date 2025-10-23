@@ -11,14 +11,17 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AppFooter: typeof import('./src/components/core/AppFooter.vue')['default']
     ConnectionForm: typeof import('./src/components/connection/ConnectionForm.vue')['default']
     ConnectionList: typeof import('./src/components/connection/ConnectionList.vue')['default']
     ConnectionStatus: typeof import('./src/components/core/ConnectionStatus.vue')['default']
+    copy: typeof import('./src/components/core/TabBar copy.vue')['default']
     MainLayout: typeof import('./src/components/core/MainLayout.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
     NConfigProvider: typeof import('naive-ui')['NConfigProvider']
+    NConfirm: typeof import('naive-ui')['NConfirm']
     NDropdown: typeof import('naive-ui')['NDropdown']
     NForm: typeof import('naive-ui')['NForm']
     NFormItem: typeof import('naive-ui')['NFormItem']
@@ -33,9 +36,14 @@ declare module 'vue' {
     NLayoutSider: typeof import('naive-ui')['NLayoutSider']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NModal: typeof import('naive-ui')['NModal']
+    NPopconfirm: typeof import('naive-ui')['NPopconfirm']
+    NScrollbar: typeof import('naive-ui')['NScrollbar']
     NSelect: typeof import('naive-ui')['NSelect']
     NSpace: typeof import('naive-ui')['NSpace']
+    NTabPane: typeof import('naive-ui')['NTabPane']
+    NTabs: typeof import('naive-ui')['NTabs']
     NTag: typeof import('naive-ui')['NTag']
+    NTooltip: typeof import('naive-ui')['NTooltip']
     Sidebar: typeof import('./src/components/core/Sidebar.vue')['default']
     TabBar: typeof import('./src/components/core/TabBar.vue')['default']
   }

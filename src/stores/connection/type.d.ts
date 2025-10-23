@@ -10,11 +10,12 @@ export interface ConnectionConfig {
   auth_method: AuthMethod
   created_at: string
   updated_at: string
-  connected: boolean
-  active: boolean
+  connected?: boolean
+  active?: boolean
 }
 
 export interface ConnectionForm {
+  id?: string
   name: string
   host: string
   port: number
@@ -48,4 +49,14 @@ export interface ConnectionResult {
   success: boolean
   message: string
   connectionId?: string
+}
+
+// 标签页信息
+export interface TabInfo {
+  id: string
+  connection_id: string
+  title: string
+  active: boolean
+  created_at: string
+  updated_at: string
 }

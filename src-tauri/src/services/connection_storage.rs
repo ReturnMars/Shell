@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs;
 use serde_json;
-use crate::models::ConnectionConfig;
+use crate::models::{ConnectionConfig, TabInfo};
 use crate::utils::{storage, crypto};
 
 /// 连接配置存储管理器
 pub struct ConnectionStorage {
     config_dir: PathBuf,
     connections_file: PathBuf,
+    tabs_file: PathBuf,
     master_key: Vec<u8>,
 }
 
@@ -18,6 +19,7 @@ impl ConnectionStorage {
     pub fn new() -> Result<Self, String> {
         let config_dir = storage::get_config_dir()?;
         let connections_file = config_dir.join("connections.json");
+        let tabs_file = config_dir.join("tabs.json");
         
         // 确保配置目录存在
         if !config_dir.exists() {
@@ -31,6 +33,7 @@ impl ConnectionStorage {
         Ok(Self {
             config_dir,
             connections_file,
+            tabs_file,
             master_key,
         })
     }
@@ -246,6 +249,133 @@ impl ConnectionStorage {
     /// 删除全部连接配置
     pub fn delete_all(&self) -> Result<(), String> {
         self.save_connections(&HashMap::new())
+    }
+
+    // ========== 标签页持久化方法 ==========
+
+    /// 保存标签页列表
+    pub fn save_tabs(&self, tabs: &HashMap<String, TabInfo>) -> Result<(), String> {
+        let json_data = serde_json::to_string_pretty(tabs)
+            .map_err(|e| format!("序列化标签页数据失败: {}", e))?;
+        
+        fs::write(&self.tabs_file, json_data)
+            .map_err(|e| format!("保存标签页文件失败: {}", e))?;
+        
+        log::info!("标签页数据已保存到: {:?}", self.tabs_file);
+        Ok(())
+    }
+
+    /// 加载标签页列表
+    pub fn load_tabs(&self) -> Result<HashMap<String, TabInfo>, String> {
+        if !self.tabs_file.exists() {
+            log::info!("标签页文件不存在，返回空列表");
+            return Ok(HashMap::new());
+        }
+
+        let json_data = fs::read_to_string(&self.tabs_file)
+            .map_err(|e| format!("读取标签页文件失败: {}", e))?;
+
+        let tabs: HashMap<String, TabInfo> = serde_json::from_str(&json_data)
+            .map_err(|e| format!("解析标签页数据失败: {}", e))?;
+
+        log::info!("成功加载 {} 个标签页", tabs.len());
+        Ok(tabs)
+    }
+
+    /// 添加标签页
+    pub fn add_tab(&self, tab: TabInfo) -> Result<String, String> {
+        let mut tabs = self.load_tabs()?;
+        
+        // 检查是否已存在相同链接的标签页
+        let existing_tab = tabs.values().find(|t| t.connection_id == tab.connection_id);
+        if let Some(existing) = existing_tab {
+            return Err(format!("链接 {} 已存在标签页", existing.title));
+        }
+
+        let tab_id = tab.id.clone();
+        tabs.insert(tab_id.clone(), tab);
+        
+        self.save_tabs(&tabs)?;
+        log::info!("添加标签页成功: {}", tab_id);
+        Ok(tab_id)
+    }
+
+    /// 删除标签页
+    pub fn remove_tab(&self, tab_id: &str) -> Result<(), String> {
+        let mut tabs = self.load_tabs()?;
+        
+        if tabs.remove(tab_id).is_some() {
+            self.save_tabs(&tabs)?;
+            log::info!("删除标签页成功: {}", tab_id);
+            Ok(())
+        } else {
+            Err("标签页不存在".to_string())
+        }
+    }
+
+    /// 更新标签页
+    pub fn update_tab(&self, tab: TabInfo) -> Result<(), String> {
+        let mut tabs = self.load_tabs()?;
+        
+        if tabs.contains_key(&tab.id) {
+            let tab_id = tab.id.clone();
+            tabs.insert(tab_id.clone(), tab);
+            self.save_tabs(&tabs)?;
+            log::info!("更新标签页成功: {}", tab_id);
+            Ok(())
+        } else {
+            Err("标签页不存在".to_string())
+        }
+    }
+
+    /// 设置活动标签页
+    pub fn set_active_tab(&self, tab_id: &str) -> Result<(), String> {
+        let mut tabs = self.load_tabs()?;
+        
+        // 先取消所有标签页的激活状态
+        for tab in tabs.values_mut() {
+            tab.active = false;
+        }
+        
+        // 激活指定标签页
+        if let Some(tab) = tabs.get_mut(tab_id) {
+            tab.active = true;
+            tab.update();
+            self.save_tabs(&tabs)?;
+            log::info!("设置活动标签页: {}", tab_id);
+            Ok(())
+        } else {
+            Err("标签页不存在".to_string())
+        }
+    }
+
+    /// 清空所有标签页
+    pub fn clear_all_tabs(&self) -> Result<(), String> {
+        self.save_tabs(&HashMap::new())?;
+        log::info!("清空所有标签页");
+        Ok(())
+    }
+
+    /// 根据链接ID删除相关标签页
+    pub fn remove_tabs_by_connection_id(&self, connection_id: &str) -> Result<(), String> {
+        let mut tabs = self.load_tabs()?;
+        let mut removed_count = 0;
+        
+        tabs.retain(|_, tab| {
+            if tab.connection_id == connection_id {
+                removed_count += 1;
+                false
+            } else {
+                true
+            }
+        });
+        
+        if removed_count > 0 {
+            self.save_tabs(&tabs)?;
+            log::info!("删除 {} 个相关标签页", removed_count);
+        }
+        
+        Ok(())
     }
 }
 

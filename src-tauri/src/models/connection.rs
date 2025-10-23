@@ -12,8 +12,17 @@ pub struct ConnectionConfig {
     pub password: Option<String>,
     pub private_key_path: Option<String>,
     pub auth_method: AuthMethod,
+    #[serde(default = "default_false")]
+    pub connected: bool,
+    #[serde(default = "default_false")]
+    pub active: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// 默认值函数
+fn default_false() -> bool {
+    false
 }
 
 /// 认证方式
@@ -33,6 +42,52 @@ pub enum ConnectionStatus {
     Error(String),
 }
 
+/// 标签页信息（独立存储，引用链接）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TabInfo {
+    pub id: String,
+    pub connection_id: String,
+    pub title: String,
+    pub active: bool,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+
+impl Default for TabInfo {
+    fn default() -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            connection_id: String::new(),
+            title: String::new(),
+            active: false,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
+impl TabInfo {
+    /// 创建新的标签页
+    pub fn new(connection_id: String, title: String) -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            connection_id,
+            title,
+            active: false,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    /// 更新标签页
+    pub fn update(&mut self) {
+        self.updated_at = chrono::Utc::now();
+    }
+}
+
 impl Default for ConnectionConfig {
     fn default() -> Self {
         let now = chrono::Utc::now();
@@ -45,11 +100,15 @@ impl Default for ConnectionConfig {
             password: None,
             private_key_path: None,
             auth_method: AuthMethod::Password,
+            connected: false,
+            active: false,
             created_at: now,
             updated_at: now,
         }
     }
 }
+
+
 
 impl ConnectionConfig {
     /// 创建新的连接配置
@@ -64,6 +123,8 @@ impl ConnectionConfig {
             password: None,
             private_key_path: None,
             auth_method: AuthMethod::Password,
+            connected: false,
+            active: false,
             created_at: now,
             updated_at: now,
         }

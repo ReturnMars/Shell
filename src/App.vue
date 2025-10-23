@@ -1,5 +1,10 @@
 <template>
-  <n-config-provider :theme-overrides="themeOverrides" inline-theme-disabled>
+  <n-config-provider
+    :locale="zhCN"
+    :date-locale="dateZhCN"
+    :theme-overrides="themeOverrides"
+    inline-theme-disabled
+  >
     <n-message-provider>
       <MainLayout>
         <template #main-content>
@@ -101,6 +106,7 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import MainLayout from "./components/core/MainLayout.vue";
+import { zhCN, dateZhCN } from "naive-ui";
 
 const greetMsg = ref("");
 const name = ref("");

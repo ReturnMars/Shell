@@ -30,6 +30,8 @@ pub fn run() {
             disconnect_all_ssh,
             get_connection_status,
             get_connections,
+            get_connected_count,
+            get_connected_connections,
             execute_ssh_command,
             test_connection,
             generate_uuid,
@@ -40,7 +42,16 @@ pub fn run() {
             get_saved_connections,
             export_connections,
             import_connections,
-            delete_all_connections
+            delete_all_connections,
+            // 标签页相关命令
+            get_tabs_list,
+            add_tab,
+            remove_tab,
+            set_active_tab,
+            get_active_tab,
+            close_all_tabs,
+            close_other_tabs,
+            get_tab_by_connection_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

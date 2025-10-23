@@ -3,7 +3,6 @@
 /* Naive UI 全局样式 */
 * {
   box-sizing: border-box;
-  line-height: normal;
 }
 
 body {
@@ -21,6 +20,9 @@ pre,
 .code {
   font-family: v-mono, "Fira Code", "Cascadia Code", "JetBrains Mono", Consolas,
     "Courier New", monospace;
+}
+span {
+  line-height: normal;
 }
 
 /* 自定义滚动条 */

@@ -37,6 +37,11 @@ pub async fn update_connection(config: ConnectionConfig) -> Result<(), String> {
 #[command]
 pub async fn delete_connection(connection_id: String) -> Result<(), String> {
     let storage = CONNECTION_STORAGE.read().await;
+    
+    // 先删除相关的标签页
+    storage.remove_tabs_by_connection_id(&connection_id)?;
+    
+    // 再删除连接配置
     storage.delete_connection(&connection_id)
 }
 
@@ -65,5 +70,10 @@ pub async fn import_connections(json_data: String) -> Result<(), String> {
 #[command]
 pub async fn delete_all_connections() -> Result<(), String> {
     let storage = CONNECTION_STORAGE.read().await;
+    
+    // 先清空所有标签页
+    storage.clear_all_tabs()?;
+    
+    // 再删除所有连接配置
     storage.delete_all()
 }
