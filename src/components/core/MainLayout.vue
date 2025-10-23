@@ -16,23 +16,20 @@
     <!-- 主内容区域 -->
     <div class="w-full flex flex-col h-screen overflow-auto">
       <!-- 标签页区域 -->
-      <TabBar 
+      <TabBar
         @toggle-sidebar="toggleSidebar"
         @settings-select="handleSettingsSelect"
       />
 
       <!-- 内容区域 -->
-      <n-layout-content class="flex-1 bg-gray-50 p-4 overflow-auto">
-        <!-- 主内容区域 -->
-        <div class="h-full flex items-center justify-center">
-          <n-empty description="请选择一个SSH连接">
-            <template #extra>
-              <n-button type="primary" @click="showConnectionForm = true">
-                创建连接
-              </n-button>
-            </template>
-          </n-empty>
-        </div>
+      <n-layout-content class="flex-1 overflow-auto">
+        <!-- 终端视图 -->
+        <TerminalView
+          ref="terminalViewRef"
+          :auto-connect="true"
+          @terminal-ready="handleTerminalReady"
+          @terminal-error="handleTerminalError"
+        />
       </n-layout-content>
 
       <!-- 底部状态栏 -->
@@ -51,6 +48,7 @@ import Sidebar from "./Sidebar.vue";
 import TabBar from "./TabBar.vue";
 import AppFooter from "./AppFooter.vue";
 import ConnectionForm from "../connection/ConnectionForm.vue";
+import TerminalView from "../terminal/TerminalView.vue";
 import { useMessage } from "naive-ui";
 import { useConnectionStore } from "@/stores/connection/index";
 
@@ -64,7 +62,7 @@ const message = useMessage();
 const connectionStore = useConnectionStore();
 
 // 引用
-// 移除了 terminalViewRef
+const terminalViewRef = ref<InstanceType<typeof TerminalView>>();
 
 // 设置菜单选项已移动到 TabBar 组件
 
@@ -83,18 +81,28 @@ const handleSettingsSelect = async (key: string) => {
   }
 };
 
-// 移除了终端相关的事件处理
+// 处理终端就绪
+const handleTerminalReady = () => {
+  console.log("终端视图已就绪");
+  // 移除不必要的成功提示
+};
+
+// 处理终端错误
+const handleTerminalError = (error: string) => {
+  console.error("终端错误:", error);
+  message.error(`终端错误: ${error}`);
+};
 
 // 清理所有保存的链接
 const clearAllConnections = async () => {
   try {
     // 先断开所有活跃连接
     await invoke("disconnect_all_ssh");
-    
+
     // 清空所有标签页
     await connectionStore.closeAllTabs();
     console.log("已清空所有标签页");
-    
+
     // 使用 store 清理所有链接
     await connectionStore.clearAllConnections();
 

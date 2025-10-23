@@ -197,6 +197,21 @@ const selectTab = async (tab: TabInfo) => {
     // 设置对应的链接为当前选中状态
     await connectionStore.setCurrentConnection(connection);
     console.log("选中标签页，同步选中链接:", connection.name);
+    
+    // 如果连接未建立，尝试建立连接
+    if (!connection.connected) {
+      console.log("连接未建立，尝试建立连接:", connection.name);
+      try {
+        const result = await connectionStore.connect(connection);
+        if (result.success) {
+          console.log("连接建立成功:", connection.name);
+        } else {
+          console.warn("连接建立失败:", result.message);
+        }
+      } catch (error) {
+        console.error("连接建立出错:", error);
+      }
+    }
   }
 };
 

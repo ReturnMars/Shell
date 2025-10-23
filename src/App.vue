@@ -5,6 +5,7 @@
     :theme-overrides="themeOverrides"
     inline-theme-disabled
   >
+    <n-global-style />
     <n-message-provider>
       <MainLayout>
         <template #main-content>

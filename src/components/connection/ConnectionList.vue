@@ -211,6 +211,24 @@ const selectConnection = async (connection: ConnectionConfig) => {
     }
   }
 
+  // 如果连接未建立，尝试建立连接
+  if (!connection.connected) {
+    console.log("连接未建立，尝试建立连接:", connection.name);
+    try {
+      const result = await connectionStore.connect(connection);
+      if (result.success) {
+        console.log("连接建立成功:", connection.name);
+        message.success(`连接建立成功: ${connection.name}`);
+      } else {
+        console.warn("连接建立失败:", result.message);
+        message.warning(`连接建立失败: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("连接建立出错:", error);
+      message.error(`连接建立出错: ${error}`);
+    }
+  }
+
   console.log("设置当前选中的链接:", connection.name);
 };
 
