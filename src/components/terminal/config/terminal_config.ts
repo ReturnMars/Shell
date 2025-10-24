@@ -32,7 +32,8 @@ export const config: ITerminalOptions = {
         buildNumber: 22621,
       }
     : undefined,
-  fontFamily: '"Fira Code", monospace, "Powerline Extra Symbols"',
+  fontFamily:
+    'v-mono,"Fira Code", "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace',
   theme: xtermjsTheme,
   cursorBlink: true,
   cursorStyle: "bar",
@@ -60,7 +61,7 @@ export const splitShellDataToLines = (
    * 第一行替换为空字符串，去掉最后一行
    */
   let lines = allLines;
-  console.log("🚀 ~ splitShellDataToLines ~ allLines:", allLines)
+  console.log("🚀 ~ splitShellDataToLines ~ allLines:", allLines);
   if (shouldRemoveFirstAndLastLine && allLines.length > 0) {
     lines = allLines.slice(0, -1); // 去掉最后一行（提示符）
     if (lines.length > 0) {
