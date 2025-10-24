@@ -93,16 +93,16 @@ impl SshService {
             .shell()
             .map_err(|e| format!("启动shell失败: {}", e))?;
 
-               // 创建连接对象
-               let ssh_connection = SshConnection {
-                   id: connection_id.clone(),
-                   config: config.clone(),
-                   session,
-                   status: ConnectionStatus::Connected,
-                   sftp: Some(sftp),
-                   shell_channel: Some(shell_channel),
-                   created_at: chrono::Utc::now(),
-               };
+        // 创建连接对象
+        let ssh_connection = SshConnection {
+            id: connection_id.clone(),
+            config: config.clone(),
+            session,
+            status: ConnectionStatus::Connected,
+            sftp: Some(sftp),
+            shell_channel: Some(shell_channel),
+            created_at: chrono::Utc::now(),
+        };
 
         // 存储连接
         {
@@ -231,12 +231,17 @@ impl SshService {
         }
     }
 
-    /// 执行SSH命令 - 改进的读取方式
+    /// 执行SSH命令 - 专业级优化版本
     pub async fn execute_command(
         &self,
         connection_id: &str,
         command: &str,
     ) -> Result<String, String> {
+        println!("=== execute_command 开始 ===");
+        println!("connection_id: {}", connection_id);
+        println!("command: {:?}", command);
+
+        // 获取连接并执行命令
         let mut connections = self.connections.write().await;
 
         if let Some(connection) = connections.get_mut(connection_id) {
@@ -246,81 +251,42 @@ impl SshService {
 
             // 使用持久化的shell通道
             if let Some(ref mut shell_channel) = connection.shell_channel {
-                // 添加调试日志
-                log::info!("执行命令: {:?}", command);
-                
-                // 对于cd命令，需要特殊处理
-                let command_to_send = if command.trim().starts_with("cd ") {
-                    // cd命令需要确保在shell中正确执行
-                    format!("{}\n", command.trim())
-                } else {
+                // 发送命令（不等待）
+                let command_to_send = if command.ends_with('\n') || command.ends_with('\r') {
                     command.to_string()
+                } else {
+                    format!("{}\n", command)
                 };
-                
-                // 直接转发输入到SSH shell
                 shell_channel
                     .write_all(command_to_send.as_bytes())
                     .map_err(|e| format!("发送命令失败: {}", e))?;
+                shell_channel
+                    .flush()
+                    .map_err(|e| format!("刷新缓冲区失败: {}", e))?;
 
-                // 刷新输出缓冲区
-                shell_channel.flush().map_err(|e| format!("刷新缓冲区失败: {}", e))?;
-
-                // 阻塞读取输出，确保完整读取
+                // 立即开始读取，不等待
                 let mut output = String::new();
-                let mut buffer = [0u8; 1024];
-                let mut total_read = 0;
-                let max_total = 8192; // 最大总读取量
-                
-                // 设置读取超时
-                let start_time = std::time::Instant::now();
-                let timeout_duration = std::time::Duration::from_secs(5); // 5秒超时
-                
-                loop {
-                    if total_read >= max_total {
-                        log::warn!("达到最大读取量限制: {} bytes", max_total);
-                        break;
-                    }
-                    
-                    // 检查超时
-                    if start_time.elapsed() > timeout_duration {
-                        log::warn!("读取超时，已读取: {} bytes", total_read);
-                        break;
-                    }
-                    
+                let mut buffer = [0u8; 4096]; // 增大缓冲区
+
+                // 快速读取循环
+                for _ in 0..3 {
+                    // 最多3次尝试
                     match shell_channel.read(&mut buffer) {
-                        Ok(0) => {
-                            // 没有更多数据，等待一下再试
-                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                            
-                            // 如果已经读取了一些数据，检查是否包含提示符
-                            if !output.is_empty() && (output.contains("$ ") || output.contains("# ") || output.contains("> ")) {
-                                break;
-                            }
-                            continue;
-                        }
+                        Ok(0) => break, // 没有更多数据
                         Ok(n) => {
-                            // 有数据，读取并添加到输出
                             let chunk = String::from_utf8_lossy(&buffer[..n]);
                             output.push_str(&chunk);
-                            total_read += n;
-                            
-                            log::debug!("读取到 {} 字节: {:?}", n, chunk);
-                            
-                            // 如果输出包含提示符，说明命令执行完成
-                            if chunk.contains("$ ") || chunk.contains("# ") || chunk.contains("> ") {
-                                log::info!("检测到提示符，命令执行完成");
+
+                            // 检查是否包含提示符（命令完成）
+                            if chunk.contains("]# ") || chunk.contains("$ ") || chunk.contains("> ")
+                            {
                                 break;
                             }
+
+                            // 短暂等待更多数据
+                            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                         }
-                        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                            // 非阻塞读取，等待一下再试
-                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                            continue;
-                        }
-                        Err(e) => {
-                            log::error!("读取输出失败: {}", e);
-                            return Err(format!("读取输出失败: {}", e));
-                        }
+                        Err(_) => break, // 非阻塞读取，无数据
                     }
                 }
 

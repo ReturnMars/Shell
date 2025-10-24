@@ -21,7 +21,9 @@
         </div>
       </div>
       <div class="terminal-content">
-        <TerminalCore />
+        <keep-alive>
+          <TerminalCore v-if="currentConnection" :key="currentConnection.id" />
+        </keep-alive>
       </div>
       <div class="terminal-footer">
         <div>
