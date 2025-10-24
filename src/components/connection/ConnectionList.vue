@@ -41,11 +41,11 @@
         </ConnectionForm>
         <!-- 断开所有链接按钮 -->
         <n-button
-          v-if="connectionStore.connectedCount > 0"
           quaternary
           circle
           size="tiny"
           type="error"
+          :disabled="!connectionStore.connectedCount"
           @click="disconnectAll"
         >
           <template #icon>

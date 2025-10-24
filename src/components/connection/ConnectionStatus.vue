@@ -5,11 +5,15 @@
     :class="[
       'rounded-full transition-colors',
       statusOnlySizeClasses[size],
-      loading ? 'bg-blue-500 animate-pulse' : connected ? 'bg-green-500' : 'bg-gray-400',
+      loading
+        ? 'bg-blue-500 animate-pulse'
+        : connected
+        ? 'bg-green-500'
+        : 'bg-gray-400',
     ]"
     :title="loading ? '连接中...' : connected ? '已连接' : '未连接'"
   ></div>
- 
+
   <!-- 完整状态标签模式 -->
   <div
     v-else
@@ -40,7 +44,9 @@
     >
       ⏳
     </div>
-    <span v-if="showText">{{ loading ? "连接中..." : connected ? "已连接" : "未连接" }}</span>
+    <span v-if="showText">{{
+      loading ? "连接中..." : connected ? "已连接" : "未连接"
+    }}</span>
   </div>
 </template>
 
@@ -79,7 +85,7 @@ const iconSizeClasses = {
 
 // 状态圆点尺寸映射
 const statusOnlySizeClasses = {
-  tiny: "w-1.5 h-1.5",
+  tiny: "w-1.2 h-1.2",
   small: "w-2 h-2",
   medium: "w-2.5 h-2.5",
   large: "w-3 h-3",

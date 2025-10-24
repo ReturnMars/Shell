@@ -21,12 +21,13 @@
           <div class="flex items-center gap-2">
             <ConnectionStatus
               class="ml-0.5"
-              :connected="isConnected"
+              size="tiny"
               status-only
+              :connected="isConnected"
               :loading="connectionStore.loading"
             />
             <span
-              class="text-sm"
+              class="text-xs"
               :class="isConnected ? 'text-green-600' : 'text-red-600'"
               >{{ isConnected ? "已连接" : "未连接" }}</span
             >

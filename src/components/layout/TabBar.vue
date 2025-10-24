@@ -20,32 +20,28 @@
       <div class="tabs-list">
         <!-- 标签页列表 -->
         <div
-          v-for="tab in connectionStore.tabs"
+          v-for="(tab, index) in connectionStore.tabs"
           :key="tab.id"
           :class="['tab-item', { 'tab-active': tab.active }]"
           @click="selectTab(tab)"
         >
-          <!-- 连接图标 -->
-          <n-icon size="22" class="mr-1.5">
-            <CodeOutlined />
-          </n-icon>
-
-          <!-- 标签页标题 -->
           <!-- 连接状态指示器 -->
-
+          <div class="flex items-center gap-1.5">
+            <ConnectionStatus
+              :connected="getTabConnection(tab)?.connected === true"
+              size="small"
+              :showText="false"
+              :statusOnly="true"
+            />
+            <span class="text-[1rem] font-medium">{{ index + 1 }}</span>
+          </div>
+          <!-- 标签页标题 -->
           <span
             class="text-[1rem] font-medium text-gray-800 mr-1.5 whitespace-nowrap overflow-hidden text-ellipsis"
           >
             {{ tab.title }}
           </span>
-          <div class="mr-1.5">
-            <ConnectionStatus
-              :connected="getTabConnection(tab)?.connected === true"
-              size="tiny"
-              :showText="false"
-              :statusOnly="true"
-            />
-          </div>
+
           <!-- 关闭按钮 -->
           <n-button
             quaternary
@@ -112,7 +108,6 @@
 <script setup lang="ts">
 import { h, onMounted } from "vue";
 import {
-  CodeOutlined,
   CloseOutlined,
   PlusOutlined,
   FolderOutlined,
@@ -120,7 +115,7 @@ import {
   SettingOutlined,
   MenuOutlined,
 } from "@vicons/antd";
-import ConnectionStatus from "./ConnectionStatus.vue";
+import ConnectionStatus from "../connection/ConnectionStatus.vue";
 import { useConnectionStore } from "@/stores/connection/index";
 import type { TabInfo } from "@/stores/connection/type.d";
 
@@ -197,7 +192,7 @@ const selectTab = async (tab: TabInfo) => {
     // 设置对应的链接为当前选中状态
     await connectionStore.setCurrentConnection(connection);
     console.log("选中标签页，同步选中链接:", connection.name);
-    
+
     // 如果连接未建立，尝试建立连接
     if (!connection.connected) {
       console.log("连接未建立，尝试建立连接:", connection.name);
@@ -299,6 +294,7 @@ const handleSettingsSelect = (key: string) => {
         flex-shrink: 0;
         position: relative;
         height: 100%;
+        background-color: rgba(0, 0, 0, 0.01);
         &:hover {
           background-color: #f0f0f0;
         }
@@ -315,7 +311,7 @@ const handleSettingsSelect = (key: string) => {
           &::before {
             content: "";
             position: absolute;
-            bottom: 0;
+            top: 0;
             left: 0;
             width: 100%;
             height: 2px;

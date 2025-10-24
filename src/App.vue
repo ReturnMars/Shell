@@ -106,7 +106,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import MainLayout from "./components/core/MainLayout.vue";
+import MainLayout from "./components/layout/MainLayout.vue";
 import { zhCN, dateZhCN } from "naive-ui";
 
 const greetMsg = ref("");

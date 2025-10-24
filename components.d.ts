@@ -11,13 +11,13 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AppFooter: typeof import('./src/components/core/AppFooter.vue')['default']
+    AppFooter: typeof import('./src/components/layout/AppFooter.vue')['default']
     ConnectionForm: typeof import('./src/components/connection/ConnectionForm.vue')['default']
     ConnectionList: typeof import('./src/components/connection/ConnectionList.vue')['default']
-    ConnectionStatus: typeof import('./src/components/core/ConnectionStatus.vue')['default']
+    ConnectionStatus: typeof import('./src/components/connection/ConnectionStatus.vue')['default']
     copy: typeof import('./src/components/terminal/TerminalEmulator copy.vue')['default']
     CustomTerminal: typeof import('./src/components/terminal/CustomTerminal.vue')['default']
-    MainLayout: typeof import('./src/components/core/MainLayout.vue')['default']
+    MainLayout: typeof import('./src/components/layout/MainLayout.vue')['default']
     ModernTerminal: typeof import('./src/components/terminal/ModernTerminal.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NButton: typeof import('naive-ui')['NButton']
@@ -62,9 +62,9 @@ declare module 'vue' {
     NTime: typeof import('naive-ui')['NTime']
     NTooltip: typeof import('naive-ui')['NTooltip']
     PtyTerminal: typeof import('./src/components/terminal/PtyTerminal.vue')['default']
-    Sidebar: typeof import('./src/components/core/Sidebar.vue')['default']
+    Sidebar: typeof import('./src/components/layout/Sidebar.vue')['default']
     SimpleTerminal: typeof import('./src/components/terminal/SimpleTerminal.vue')['default']
-    TabBar: typeof import('./src/components/core/TabBar.vue')['default']
+    TabBar: typeof import('./src/components/layout/TabBar.vue')['default']
     Terminal: typeof import('./src/components/terminal/index.vue')['default']
     TerminalContainer: typeof import('./src/components/terminal/TerminalContainer.vue')['default']
     TerminalCore: typeof import('./src/components/terminal/components/TerminalCore.vue')['default']
