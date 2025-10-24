@@ -33,7 +33,7 @@ export const config: ITerminalOptions = {
       }
     : undefined,
   fontFamily:
-    'v-mono,"Fira Code", "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace',
+    'v-mono, "JetBrains Mono", "Fira Code","Cascadia Code", "Consolas", "Courier New", monospace',
   theme: xtermjsTheme,
   cursorBlink: true,
   cursorStyle: "bar",

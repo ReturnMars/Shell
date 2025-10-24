@@ -9,7 +9,7 @@
     ]"
     :title="loading ? '连接中...' : connected ? '已连接' : '未连接'"
   ></div>
-
+ 
   <!-- 完整状态标签模式 -->
   <div
     v-else

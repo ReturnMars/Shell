@@ -6,7 +6,7 @@
           <span>{{ currentConnection?.name }}</span>
         </div>
         <div class="terminal-title-status">
-          <n-tag size="small" round :type="isConnected ? 'success' : 'error'">
+          <!-- <n-tag text size="small" round :type="isConnected ? 'success' : 'error'">
             <template #icon>
               <ConnectionStatus
                 class="ml-0.5"
@@ -17,7 +17,20 @@
             </template>
 
             <span class="mr-0.5">{{ isConnected ? "已连接" : "未连接" }}</span>
-          </n-tag>
+          </n-tag> -->
+          <div class="flex items-center gap-2">
+            <ConnectionStatus
+              class="ml-0.5"
+              :connected="isConnected"
+              status-only
+              :loading="connectionStore.loading"
+            />
+            <span
+              class="text-sm"
+              :class="isConnected ? 'text-green-600' : 'text-red-600'"
+              >{{ isConnected ? "已连接" : "未连接" }}</span
+            >
+          </div>
         </div>
       </div>
       <div class="terminal-content">
