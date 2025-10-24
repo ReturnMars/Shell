@@ -269,43 +269,24 @@ impl SshService {
                 let mut buffer = [0u8; 4096]; // 增大缓冲区
 
                 // 快速读取循环
-                let mut empty_reads = 0; // 连续空读取计数
-                let max_empty_reads = 5; // 最多允许5次连续空读取
-                
-                for attempt in 0..5 { // 最多5次尝试
+                for _ in 0..3 {
+                    // 最多3次尝试
                     match shell_channel.read(&mut buffer) {
-                        Ok(0) => {
-                            empty_reads += 1;
-                            println!("第{}次尝试：读取到0字节，连续空读取: {}", attempt + 1, empty_reads);
-                            
-                            // 如果连续空读取次数过多，可能命令已完成
-                            if empty_reads >= max_empty_reads {
-                                println!("连续{}次空读取，可能命令已完成", max_empty_reads);
-                                break;
-                            }
-                            
-                            // 短暂等待更多数据
-                            tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-                        },
+                        Ok(0) => break, // 没有更多数据
                         Ok(n) => {
-                            empty_reads = 0; // 重置空读取计数
                             let chunk = String::from_utf8_lossy(&buffer[..n]);
                             output.push_str(&chunk);
-                            println!("第{}次尝试：读取到{}字节: {:?}", attempt + 1, n, chunk);
 
                             // 检查是否包含提示符（命令完成）
-                            if chunk.contains("]# ") || chunk.contains("$ ") || chunk.contains("> ") {
-                                println!("检测到提示符，命令执行完成");
+                            if chunk.contains("]# ") || chunk.contains("$ ") || chunk.contains("> ")
+                            {
                                 break;
                             }
 
                             // 短暂等待更多数据
                             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                        },
-                        Err(e) => {
-                            println!("读取失败: {:?}，停止读取", e);
-                            break; // 读取错误，停止
                         }
+                        Err(_) => break, // 非阻塞读取，无数据
                     }
                 }
 
