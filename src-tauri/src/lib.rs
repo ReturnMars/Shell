@@ -51,7 +51,7 @@ pub fn run() {
             get_active_tab,
             close_all_tabs,
             close_other_tabs,
-            get_tab_by_connection_id
+            get_tab_by_connection_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

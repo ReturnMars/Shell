@@ -24,12 +24,7 @@
       <!-- 内容区域 -->
       <n-layout-content class="flex-1 overflow-auto">
         <!-- 终端视图 -->
-        <TerminalView
-          ref="terminalViewRef"
-          :auto-connect="true"
-          @terminal-ready="handleTerminalReady"
-          @terminal-error="handleTerminalError"
-        />
+        <TerminalView />
       </n-layout-content>
 
       <!-- 底部状态栏 -->
@@ -48,7 +43,7 @@ import Sidebar from "./Sidebar.vue";
 import TabBar from "./TabBar.vue";
 import AppFooter from "./AppFooter.vue";
 import ConnectionForm from "../connection/ConnectionForm.vue";
-import TerminalView from "../terminal/TerminalView.vue";
+import TerminalView from "../terminal/index.vue";
 import { useMessage } from "naive-ui";
 import { useConnectionStore } from "@/stores/connection/index";
 
@@ -60,9 +55,6 @@ const showConnectionForm = ref(false);
 
 const message = useMessage();
 const connectionStore = useConnectionStore();
-
-// 引用
-const terminalViewRef = ref<InstanceType<typeof TerminalView>>();
 
 // 设置菜单选项已移动到 TabBar 组件
 
@@ -79,18 +71,6 @@ const handleSettingsSelect = async (key: string) => {
   if (key === "clear_all") {
     await clearAllConnections();
   }
-};
-
-// 处理终端就绪
-const handleTerminalReady = () => {
-  console.log("终端视图已就绪");
-  // 移除不必要的成功提示
-};
-
-// 处理终端错误
-const handleTerminalError = (error: string) => {
-  console.error("终端错误:", error);
-  message.error(`终端错误: ${error}`);
 };
 
 // 清理所有保存的链接

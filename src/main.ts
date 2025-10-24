@@ -5,7 +5,7 @@ import "./style.css";
 import App from "./App.vue";
 import "vfonts/Lato.css";
 import "vfonts/FiraCode.css";
-
+import "virtual:uno.css";
 const app = createApp(App);
 const pinia = createPinia();
 
