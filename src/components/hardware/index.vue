@@ -2,14 +2,14 @@
   <div class="hardware-monitor">
     <!-- 标题栏 -->
     <div class="hardware-header" :class="{ scrolled: isScrolled }">
-      <div class="flex items-center gap-2 p-2">
+      <div class="flex items-center gap-2 p-2 pt-0">
         <span class="text-medium font-medium text-gray-600 tracking-wider">
           硬件监控
         </span>
       </div>
       <div class="flex items-center gap-2">
         <!-- 刷新模式切换 -->
-        <n-tooltip trigger="hover">
+        <n-tooltip trigger="hover" :disabled="!isConnected">
           <template #trigger>
             <n-button
               quaternary
@@ -18,6 +18,7 @@
               :type="autoRefresh ? 'primary' : 'default'"
               @click="toggleAutoRefresh"
               class="refresh-mode-btn"
+              :disabled="!isConnected"
             >
               <template #icon>
                 <n-icon size="16" :color="autoRefresh ? '#18a058' : '#9ca4ae'">
@@ -42,6 +43,7 @@
               size="tiny"
               :loading="loading"
               @click="handleRefresh"
+              :disabled="!isConnected"
             >
               <template #icon>
                 <n-icon>

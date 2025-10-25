@@ -1,8 +1,8 @@
 <template>
-  <div class="h-full flex flex-col mr-1">
+  <div class="h-full flex flex-col">
     <!-- 侧边栏头部 -->
     <div
-      class="border-b border-gray-200 h-[45px] flex items-center justify-start pl-3"
+      class="border-b border-gray-200 h-[45px] flex items-center justify-start pl-3 b-b-1px b-b-solid b-gray-200"
     >
       <div class="flex items-center gap-2 text-lg font-semibold text-gray-800">
         <n-icon size="24" color="#18a058">
@@ -13,12 +13,12 @@
     </div>
 
     <!-- 连接列表 -->
-    <div class="flex flex-col flex-1 overflow-y-auto">
+    <div class="flex flex-col flex-1 overflow-y-auto mr-2px">
       <!-- 链接管理区域 -->
       <div class="max-h-[50%] overflow-y-auto relative">
         <ConnectionList />
       </div>
-      <n-divider class="my-4!" />
+      <n-divider class="my-2!" />
       <!-- 硬件监控区域 -->
       <div class="flex-1 overflow-y-auto">
         <HardwareMonitor />

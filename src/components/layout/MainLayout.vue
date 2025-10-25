@@ -6,7 +6,7 @@
       :collapsed-width="0"
       :width="280"
       :native-scrollbar="false"
-      class="wrap-layout-sidebar bg-white border-r border-gray-200"
+      class="wrap-layout-sidebar bg-white b-r-1px b-r-solid b-gray-200"
       @collapse="sidebarCollapsed = true"
       @expand="sidebarCollapsed = false"
     >
