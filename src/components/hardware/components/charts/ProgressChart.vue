@@ -44,7 +44,7 @@ const displayValue = computed(() => {
   if (props.showPercentage) {
     return `${Math.round(percentage.value)}%`;
   }
-  return `${props.data.value}${props.data.unit}`;
+  return `${props.data.value}${props.data.unit}/${props.data.max}${props.data.unit}`;
 });
 
 const color = computed(() => {

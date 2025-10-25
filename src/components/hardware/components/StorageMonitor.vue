@@ -14,7 +14,7 @@
           <span class="text-sm font-medium">存储</span>
         </div>
         <n-tag size="small" type="info">
-          {{ storageList.length }} 个设备
+          {{ validStorageList.length }} 个设备
         </n-tag>
       </div>
     </template>
@@ -23,23 +23,16 @@
       <div class="storage-grid">
         <div
           class="storage-drive"
-          v-for="(storage, index) in storageList"
+          v-for="(storage, index) in validStorageList"
           :key="index"
         >
-          <!-- 左侧：图标和盘符 -->
+          <!-- 左侧：名称和容量信息 -->
           <div class="drive-left">
-            <div class="drive-icon">
-              <n-icon size="16" :color="getStorageIconColor(storage.type)">
-                <component :is="getStorageIcon(storage.type)" />
-              </n-icon>
-            </div>
-            <div class="drive-label">{{ storage.mountPoint }}</div>
-          </div>
-
-          <!-- 中间：容量和使用率 -->
-          <div class="drive-center">
+            <div class="drive-label">{{ storage.mount_point }}</div>
             <div class="drive-usage">
-              <div class="usage-percentage">{{ storage.usage }}%</div>
+              <div class="usage-percentage">
+                {{ storage.usage?.toFixed(2) }}%
+              </div>
               <div class="usage-bar">
                 <div
                   class="usage-fill"
@@ -61,14 +54,14 @@
             </div>
           </div>
 
-          <!-- 右侧：类型和性能 -->
+          <!-- 右侧：图标和类型 -->
           <div class="drive-right">
+            <div class="drive-icon">
+              <n-icon size="16" :color="getStorageIconColor(storage.type)">
+                <component :is="getStorageIcon(storage.type)" />
+              </n-icon>
+            </div>
             <div class="drive-type">
-              <!-- <n-tag size="tiny" :type="getStorageTypeTag(storage.type)">
-                <span class="text-xs">
-                  {{ storage.type.toUpperCase() }}
-                </span>
-              </n-tag> -->
               <span :class="getStorageTypeTag(storage.type)">{{
                 storage.type.toUpperCase()
               }}</span>
@@ -83,12 +76,34 @@
 <script setup lang="ts">
 import { HddOutlined, CloudServerOutlined } from "@vicons/antd";
 import type { StorageInfo } from "../types";
+import { computed } from "vue";
+import { formatBytes } from "@/utils/format";
 
 interface Props {
   storageList: StorageInfo[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+// 过滤有效的存储设备
+const validStorageList = computed(() => {
+  return props.storageList.filter(storage => {
+    // 过滤条件：
+    // 1. 总容量大于0
+    // 2. 挂载点不为空
+    // 3. 不是特殊文件系统
+    return storage.total > 0 && 
+           storage.mount_point && 
+           !storage.mount_point.startsWith('/proc') &&
+           !storage.mount_point.startsWith('/sys') &&
+           !storage.mount_point.startsWith('/dev') &&
+           !storage.mount_point.startsWith('/run') &&
+           !storage.mount_point.startsWith('/snap') &&
+           !storage.device.startsWith('tmpfs') &&
+           !storage.device.startsWith('devtmpfs') &&
+           !storage.device.startsWith('overlay');
+  });
+});
 
 const getStorageIcon = (type: "ssd" | "hdd") => {
   return type === "ssd" ? CloudServerOutlined : HddOutlined;
@@ -103,18 +118,6 @@ const getStorageTypeTag = (type: "ssd" | "hdd") => {
   return type === "ssd"
     ? `${baseClass} text-green-500 `
     : `${baseClass} text-blue-500`;
-};
-
-const formatBytes = (bytes: number) => {
-  if (bytes === 0) return "0 B";
-
-  const gb = bytes / (1024 * 1024);
-  if (gb >= 1) {
-    return `${gb.toFixed(1)} GB`;
-  }
-
-  const mb = bytes / 1024;
-  return `${mb.toFixed(0)} MB`;
 };
 
 const getUsageColor = (usage: number) => {
@@ -162,9 +165,10 @@ const getUsageColor = (usage: number) => {
 
 .drive-left {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 50px;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  margin-right: 8px;
 }
 
 .drive-icon {
@@ -181,6 +185,7 @@ const getUsageColor = (usage: number) => {
   font-size: 11px;
   font-weight: 700;
   color: #1890ff;
+  margin-bottom: 2px;
 }
 
 .drive-center {
@@ -191,14 +196,14 @@ const getUsageColor = (usage: number) => {
 .drive-right {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
+  align-items: center;
+  gap: 4px;
   min-width: 55px;
 }
 
 .drive-type {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .drive-usage {

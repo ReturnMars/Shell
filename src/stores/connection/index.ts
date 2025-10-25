@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, onUnmounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import type { ConnectionConfig, ConnectionResult, TabInfo } from "./type";
+import { connectionStateManager, ConnectionStatus } from "./connectionState";
 
 export const useConnectionStore = defineStore("connection", () => {
   // 状态
@@ -17,14 +18,29 @@ export const useConnectionStore = defineStore("connection", () => {
   // 错误信息
   const error = ref<string | null>(null);
 
-  // 计算属性
-  const connectedConnections = computed(() =>
-    connections.value.filter((conn) => conn.connected === true)
-  );
+  // 计算属性 - 使用新的状态管理器
+  const connectedConnections = computed(() => {
+    const connectedStates = connectionStateManager.connectedStates.value;
+    return connections.value.filter(conn => 
+      connectedStates.some(state => state.id === conn.id)
+    );
+  });
 
   const connectionCount = computed(() => connections.value.length);
   const connectedCount = computed(() => connectedConnections.value.length);
   const hasConnections = computed(() => connections.value.length > 0);
+
+  // 当前连接的真实状态
+  const currentConnectionState = computed(() => {
+    if (!currentConnection.value) return null;
+    return connectionStateManager.getConnectionState(currentConnection.value.id);
+  });
+
+  // 当前连接是否真正连接
+  const isCurrentConnectionConnected = computed(() => {
+    const state = currentConnectionState.value;
+    return state?.status === ConnectionStatus.CONNECTED;
+  });
 
   // 标签页相关计算属性
   const activeTab = computed(() => 
@@ -52,13 +68,25 @@ export const useConnectionStore = defineStore("connection", () => {
         "get_connected_connections"
       )) as ConnectionConfig[];
 
-      // 更新连接状态
+      // 更新连接状态 - 使用新的状态管理器
       const connectedIds = new Set(connectedConnections.map((conn) => conn.id));
       connections.value = result.map((conn) => ({
         ...conn,
         connected: connectedIds.has(conn.id),
         active: conn.active || false,
       }));
+
+      // 同步状态管理器
+      for (const conn of result) {
+        const isConnected = connectedIds.has(conn.id);
+        connectionStateManager.setConnectionState(conn.id, {
+          config: conn,
+          status: isConnected ? ConnectionStatus.CONNECTED : ConnectionStatus.DISCONNECTED,
+          lastCheck: Date.now(),
+          retryCount: 0,
+          maxRetries: 3
+        });
+      }
 
       console.log("加载链接配置成功:", result.length, "个链接");
       console.log("实际已连接:", connectedConnections.length, "个链接");
@@ -166,17 +194,18 @@ export const useConnectionStore = defineStore("connection", () => {
 
   // 设置当前选中的链接
   const setCurrentConnection = async (connection: ConnectionConfig | null) => {
+    console.log("连接Store - setCurrentConnection 被调用:", connection);
     currentConnection.value = connection;
-    console.log("🚀 ~ setCurrentConnection ~ connection:", connection);
+    console.log("连接Store - 当前连接已设置:", currentConnection.value);
 
     // 如果选中了链接且未连接，则自动连接
     if (connection && connection.connected !== true) {
       try {
         loading.value = true;
-        console.log(`链接 ${connection.name} 未连接，正在自动连接...`);
+        console.log(`连接Store - 链接 ${connection.name} 未连接，正在自动连接...`);
         const result = await connect(connection);
         if (result.success) {
-          console.log(`自动连接成功: ${connection.name}`);
+          console.log(`连接Store - 自动连接成功: ${connection.name}`);
           // 更新连接状态
           const index = connections.value.findIndex(
             (conn) => conn.id === connection.id
@@ -185,15 +214,17 @@ export const useConnectionStore = defineStore("connection", () => {
             connections.value[index].connected = true;
           }
         } else {
-          console.warn(`自动连接失败: ${result.message}`);
+          console.warn(`连接Store - 自动连接失败: ${result.message}`);
           error.value = `自动连接失败: ${result.message}`;
         }
       } catch (err) {
-        console.error(`自动连接出错: ${err}`);
+        console.error(`连接Store - 自动连接出错: ${err}`);
         error.value = `自动连接出错: ${err}`;
       } finally {
         loading.value = false;
       }
+    } else if (connection && connection.connected === true) {
+      console.log(`连接Store - 链接 ${connection.name} 已经连接，无需重新连接`);
     }
   };
 
@@ -291,15 +322,29 @@ export const useConnectionStore = defineStore("connection", () => {
     try {
       loading.value = true;
       error.value = null;
+      
+      // 更新状态为连接中
+      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.CONNECTING);
+      
       const connectionId = (await invoke("connect_ssh", { config })) as string;
 
-      // 更新连接状态
+      // 更新连接状态 - 使用新的状态管理器
       const index = connections.value.findIndex(
         (conn) => conn.id === config.id
       );
       if (index > -1) {
         connections.value[index].connected = true;
+        console.log("连接Store - 更新连接状态为已连接:", config.id);
+        
+        // 如果这是当前连接，也要更新currentConnection
+        if (currentConnection.value?.id === config.id) {
+          currentConnection.value.connected = true;
+          console.log("连接Store - 更新当前连接状态为已连接:", config.id);
+        }
       }
+
+      // 更新状态管理器
+      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.CONNECTED);
 
       console.log("连接建立成功:", connectionId);
       return {
@@ -310,6 +355,10 @@ export const useConnectionStore = defineStore("connection", () => {
     } catch (err) {
       const errorMsg = `连接建立失败: ${err}`;
       console.error("连接建立失败:", err);
+      
+      // 更新状态管理器为错误状态
+      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.ERROR, errorMsg);
+      
       return {
         success: false,
         message: errorMsg,
@@ -324,6 +373,10 @@ export const useConnectionStore = defineStore("connection", () => {
     try {
       loading.value = true;
       error.value = null;
+      
+      // 更新状态为断开中
+      connectionStateManager.updateConnectionStatus(connectionId, ConnectionStatus.DISCONNECTED);
+      
       await invoke("disconnect_ssh", { connectionId });
 
       // 更新连接状态
@@ -332,6 +385,11 @@ export const useConnectionStore = defineStore("connection", () => {
       );
       if (index > -1) {
         connections.value[index].connected = false;
+      }
+
+      // 如果断开的是当前连接，清空当前连接
+      if (currentConnection.value?.id === connectionId) {
+        currentConnection.value.connected = false;
       }
 
       console.log("断开连接成功:", connectionId);
@@ -385,6 +443,23 @@ export const useConnectionStore = defineStore("connection", () => {
       loading.value = false;
     }
   };
+
+  // 初始化状态管理器
+  const initializeStateManager = () => {
+    console.log('连接Store - 初始化状态管理器');
+    connectionStateManager.startHealthCheck();
+  };
+
+  // 清理状态管理器
+  const cleanupStateManager = () => {
+    console.log('连接Store - 清理状态管理器');
+    connectionStateManager.cleanup();
+  };
+
+  // 组件卸载时清理
+  onUnmounted(() => {
+    cleanupStateManager();
+  });
 
   // 生成UUID
   const generateUuid = async (): Promise<string> => {
@@ -561,6 +636,8 @@ export const useConnectionStore = defineStore("connection", () => {
     activeTab,
     tabCount,
     hasTabs,
+    currentConnectionState,
+    isCurrentConnectionConnected,
 
     // 方法
     fetchConnections,
@@ -587,6 +664,11 @@ export const useConnectionStore = defineStore("connection", () => {
     closeAllTabs,
     closeOtherTabs,
     getTabConnection,
+    
+    // 状态管理器方法
+    initializeStateManager,
+    cleanupStateManager,
+    connectionStateManager,
     
     reset,
   };

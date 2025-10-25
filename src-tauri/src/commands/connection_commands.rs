@@ -1,16 +1,7 @@
 // SSH连接相关的Tauri命令
 use tauri::command;
 use crate::models::{ConnectionConfig, ConnectionStatus, TabInfo};
-use crate::services::SshService;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-// 全局SSH服务实例
-lazy_static::lazy_static! {
-    static ref SSH_SERVICE: Arc<RwLock<SshService>> = Arc::new(RwLock::new(
-        SshService::new().expect("无法创建SSH服务")
-    ));
-}
+use crate::services::ssh_manager::SSH_SERVICE;
 
 /// 建立SSH连接
 #[command]
@@ -66,6 +57,29 @@ pub async fn execute_ssh_command(connection_id: String, command: String) -> Resu
 pub async fn disconnect_all_ssh() -> Result<(), String> {
     let service = SSH_SERVICE.read().await;
     service.disconnect_all().await
+}
+
+/// 重连SSH
+#[command]
+pub async fn reconnect_ssh(config: ConnectionConfig) -> Result<String, String> {
+    // 先断开现有连接
+    {
+        let service = SSH_SERVICE.read().await;
+        if let Err(e) = service.disconnect(&config.id).await {
+            log::warn!("重连时断开现有连接失败: {}", e);
+        }
+    } // 释放读锁
+    
+    // 重新建立连接
+    let service = SSH_SERVICE.read().await;
+    service.connect(config).await
+}
+
+/// 检查连接健康状态
+#[command]
+pub async fn check_connection_status(connection_id: String) -> Result<bool, String> {
+    let service = SSH_SERVICE.read().await;
+    service.check_connection_health(&connection_id).await
 }
 
 /// 生成UUID

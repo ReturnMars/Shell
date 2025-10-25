@@ -19,19 +19,19 @@
       <div class="network-overview">
         <div class="overview-item">
           <div class="overview-label">总接收</div>
-          <div class="overview-value">{{ formatBytes(networkInfo.totalRx * 1024 * 1024) }}</div>
+          <div class="overview-value">{{ formatBytes(networkInfo.total_rx * 1024 * 1024) }}</div>
         </div>
         <div class="overview-item">
           <div class="overview-label">总发送</div>
-          <div class="overview-value">{{ formatBytes(networkInfo.totalTx * 1024 * 1024) }}</div>
+          <div class="overview-value">{{ formatBytes(networkInfo.total_tx * 1024 * 1024) }}</div>
         </div>
         <div class="overview-item">
           <div class="overview-label">接收速度</div>
-          <div class="overview-value">{{ networkInfo.rxSpeed.toFixed(1) }} MB/s</div>
+          <div class="overview-value">{{ (networkInfo.rx_speed || 0).toFixed(1) }} MB/s</div>
         </div>
         <div class="overview-item">
           <div class="overview-label">发送速度</div>
-          <div class="overview-value">{{ networkInfo.txSpeed.toFixed(1) }} MB/s</div>
+          <div class="overview-value">{{ (networkInfo.tx_speed || 0).toFixed(1) }} MB/s</div>
         </div>
       </div>
 
@@ -58,12 +58,12 @@
             <div class="stat-item">
               <span class="stat-label">接收:</span>
               <span class="stat-value">{{ formatBytes(iface.rx * 1024 * 1024) }}</span>
-              <span class="stat-speed">{{ iface.rxSpeed.toFixed(1) }} MB/s</span>
+              <span class="stat-speed">{{ (iface.rx_speed || 0).toFixed(1) }} MB/s</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">发送:</span>
               <span class="stat-value">{{ formatBytes(iface.tx * 1024 * 1024) }}</span>
-              <span class="stat-speed">{{ iface.txSpeed.toFixed(1) }} MB/s</span>
+              <span class="stat-speed">{{ (iface.tx_speed || 0).toFixed(1) }} MB/s</span>
             </div>
           </div>
         </div>
@@ -75,29 +75,13 @@
 <script setup lang="ts">
 import { WifiOutlined, DisconnectOutlined } from '@vicons/antd';
 import type { NetworkInfo } from '../types';
+import { formatBytes } from '@/utils/format';
 
 interface Props {
   networkInfo: NetworkInfo;
 }
 
 defineProps<Props>();
-
-const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B';
-  
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) {
-    return `${gb.toFixed(1)} GB`;
-  }
-  
-  const mb = bytes / (1024 * 1024);
-  if (mb >= 1) {
-    return `${mb.toFixed(1)} MB`;
-  }
-  
-  const kb = bytes / 1024;
-  return `${kb.toFixed(0)} KB`;
-};
 </script>
 
 <style scoped>

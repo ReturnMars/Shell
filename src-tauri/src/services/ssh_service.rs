@@ -1,5 +1,5 @@
 // SSH连接服务
-use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo, CommandOptions};
+use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo, CommandOptions, HardwareInfo, CpuInfo, MemoryInfo, StorageInfo, NetworkInfo};
 use crate::services::connection_storage::ConnectionStorage;
 use ssh2::{Session, Sftp};
 use std::collections::HashMap;
@@ -47,12 +47,16 @@ impl SshService {
 
     /// 建立SSH连接
     pub async fn connect(&self, config: ConnectionConfig) -> Result<String, String> {
+        log::info!("SSH服务 - 开始建立连接: {}", config.id);
+        log::info!("SSH服务 - 连接配置: {}@{}:{}", config.username, config.host, config.port);
+        
         // 验证配置
         config
             .validate()
             .map_err(|e| format!("配置验证失败: {}", e))?;
 
         let connection_id = config.id.clone();
+        log::info!("SSH服务 - 使用连接ID: {}", connection_id);
 
         // 检查是否已存在连接
         {
@@ -108,15 +112,38 @@ impl SshService {
         {
             let mut connections = self.connections.write().await;
             connections.insert(connection_id.clone(), ssh_connection);
+            log::info!("SSH服务 - 连接已存储到HashMap中，当前连接数量: {}", connections.len());
         }
 
         log::info!(
-            "SSH连接建立成功: {}@{}:{}",
+            "SSH服务 - 连接建立成功: {}@{}:{}, 连接ID: {}",
             config.username,
             config.host,
-            config.port
+            config.port,
+            connection_id
         );
         Ok(connection_id)
+    }
+
+    /// 检查连接健康状态
+    pub async fn check_connection_health(&self, connection_id: &str) -> Result<bool, String> {
+        log::info!("SSH服务 - 检查连接健康状态: {}", connection_id);
+        
+        let connections = self.connections.read().await;
+        
+        if let Some(connection) = connections.get(connection_id) {
+            // 检查会话是否仍然认证
+            if connection.session.authenticated() {
+                log::info!("SSH服务 - 连接 {} 会话仍然认证", connection_id);
+                return Ok(true);
+            } else {
+                log::warn!("SSH服务 - 连接 {} 会话未认证", connection_id);
+                return Ok(false);
+            }
+        } else {
+            log::warn!("SSH服务 - 连接 {} 不存在", connection_id);
+            return Ok(false);
+        }
     }
 
     /// 断开SSH连接
@@ -336,6 +363,14 @@ impl SshService {
                         if options.debug_output {
                             println!("读取失败: {:?}", e);
                         }
+                        // 如果是 "Failure while draining incoming flow" 错误，尝试继续
+                        if e.to_string().contains("Failure while draining incoming flow") {
+                            if options.debug_output {
+                                println!("遇到draining flow错误，尝试继续读取");
+                            }
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                            continue;
+                        }
                         break;
                     }
                 }
@@ -391,9 +426,17 @@ impl SshService {
                     }
                     Err(e) => {
                         if options.debug_output {
-                            println!("读取失败: {:?}，停止读取", e);
+                            println!("读取失败: {:?}", e);
                         }
-                        break; // 读取错误，停止
+                        // 如果是 "Failure while draining incoming flow" 错误，尝试继续
+                        if e.to_string().contains("Failure while draining incoming flow") {
+                            if options.debug_output {
+                                println!("遇到draining flow错误，尝试继续读取");
+                            }
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                            continue;
+                        }
+                        break; // 其他读取错误，停止
                     }
                 }
             }
@@ -638,6 +681,776 @@ impl SshService {
         tabs.values()
             .find(|t| t.connection_id == connection_id)
             .cloned()
+    }
+
+    // ==================== 硬件信息获取方法 ====================
+
+    /// 获取CPU信息 - 使用改进的方法
+    pub async fn get_cpu_info(&self, connection_id: &str) -> Result<CpuInfo, String> {
+        let mut cpu_info = CpuInfo::default();
+
+        // 分别执行每个命令获取CPU信息
+        // 1. 获取CPU型号
+        let model_cmd = "lscpu | grep 'Model name' || lscpu | grep 'Vendor ID' || echo 'Unknown CPU'";
+        let model_output = self.execute_command(connection_id, model_cmd).await?;
+        cpu_info.model = self.extract_cpu_model(&model_output);
+        
+        // 2. 获取核心数
+        let cores_cmd = "nproc";
+        let cores_output = self.execute_command(connection_id, cores_cmd).await?;
+        cpu_info.cores = self.extract_cpu_cores(&cores_output);
+        
+        // 3. 获取CPU使用率
+        let usage_cmd = "top -bn1 | grep 'Cpu(s)'";
+        let usage_output = self.execute_command(connection_id, usage_cmd).await?;
+        cpu_info.usage = self.extract_cpu_usage(&usage_output);
+        
+        // 4. 获取CPU频率
+        let freq_cmd = "lscpu | grep 'CPU MHz'";
+        let freq_output = self.execute_command(connection_id, freq_cmd).await?;
+        cpu_info.frequency = self.extract_cpu_frequency(&freq_output);
+        
+        // 5. 获取CPU温度
+        let temp_cmd = "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1";
+        let temp_output = self.execute_command(connection_id, temp_cmd).await?;
+        cpu_info.temperature = self.extract_cpu_temperature(&temp_output);
+
+        Ok(cpu_info)
+    }
+
+    /// 清理命令输出，移除ANSI颜色代码和控制字符
+    fn clean_command_output(&self, output: &str) -> String {
+        // 移除ANSI颜色代码和控制字符
+        let cleaned = output
+            .replace("\u{1b}[01;31m", "")
+            .replace("\u{1b}[m", "")
+            .replace("\u{1b}[K", "")
+            .replace("\u{1b}]0;root@iZ2vcc2rr8aqk0prfnjavaZ:~\u{7}", "")
+            .replace("\r\n", "\n")
+            .replace("\r", "\n");
+        
+        // 移除命令本身和提示符
+        let lines: Vec<&str> = cleaned.lines().collect();
+        let mut result = String::new();
+        
+        for line in lines {
+            let trimmed = line.trim();
+            // 跳过空行、命令本身、提示符
+            if !trimmed.is_empty() 
+                && !trimmed.starts_with("lscpu")
+                && !trimmed.starts_with("nproc")
+                && !trimmed.starts_with("top")
+                && !trimmed.starts_with("cat")
+                && !trimmed.starts_with("[root@")
+                && !trimmed.ends_with("]#")
+                && !trimmed.ends_with("$") {
+                result.push_str(trimmed);
+                result.push('\n');
+            }
+        }
+        
+        result.trim().to_string()
+    }
+
+    /// 提取CPU型号
+    fn extract_cpu_model(&self, output: &str) -> String {
+        let cleaned = self.clean_command_output(output);
+        cleaned
+            .lines()
+            .find(|l| l.contains("Model name:") && !l.contains("BIOS"))
+            .map(|l| l.replace("Model name:", "").trim().to_string())
+            .or_else(|| {
+                cleaned.lines()
+                    .find(|l| l.contains("Vendor ID:"))
+                    .map(|l| l.replace("Vendor ID:", "").trim().to_string())
+            })
+            .unwrap_or_else(|| "Unknown CPU".to_string())
+    }
+    
+    /// 提取CPU核心数
+    fn extract_cpu_cores(&self, output: &str) -> u32 {
+        let cleaned = self.clean_command_output(output);
+        cleaned
+            .lines()
+            .find(|l| l.trim().parse::<u32>().is_ok())
+            .and_then(|l| l.trim().parse::<u32>().ok())
+            .unwrap_or(1)
+    }
+    
+    /// 提取CPU使用率 - 使用 100 - idle 计算总使用率
+    fn extract_cpu_usage(&self, output: &str) -> f64 {
+        let cleaned = self.clean_command_output(output);
+        
+        cleaned
+            .lines()
+            .find(|l| l.contains("Cpu(s)"))
+            .and_then(|line| {
+                // 查找包含 "id" (idle) 的部分
+                let parts: Vec<&str> = line.split(',').collect();
+                for part in parts {
+                    if part.contains("id") {
+                        // 提取idle数字部分
+                        let idle_number = part.split_whitespace()
+                            .find(|s| s.parse::<f64>().is_ok())
+                            .unwrap_or("0");
+                        
+                        if let Ok(idle) = idle_number.parse::<f64>() {
+                            let usage = 100.0 - idle;
+                            return Some(usage);
+                        }
+                    }
+                }
+                None
+            })
+            .unwrap_or(0.0)
+    }
+    
+    /// 提取CPU频率
+    fn extract_cpu_frequency(&self, output: &str) -> Option<f64> {
+        let cleaned = self.clean_command_output(output);
+        cleaned
+            .lines()
+            .find(|l| l.contains("CPU MHz"))
+            .and_then(|line| {
+                let freq_value = self.extract_number_from_output(line);
+                freq_value.parse::<f64>().ok()
+            })
+    }
+    
+    /// 提取CPU温度
+    fn extract_cpu_temperature(&self, output: &str) -> Option<f64> {
+        let cleaned = self.clean_command_output(output);
+        cleaned
+            .lines()
+            .find(|l| l.trim().parse::<f64>().is_ok() && l.trim().len() > 3)
+            .and_then(|line| {
+                let temp_value = self.extract_number_from_output(line);
+                temp_value.parse::<f64>().ok().map(|temp| temp / 1000.0)
+            })
+    }
+
+    /// 解析CPU信息输出 - 使用改进的方法（保留作为备用）
+    fn parse_cpu_info_from_output(&self, output: &str, cpu_info: &mut CpuInfo) -> Result<(), String> {
+        log::info!("SSH服务 - 开始解析CPU信息输出");
+        
+        // 提取 __BEGIN__ 和 __END__ 之间的内容
+        let block = output
+            .split("__BEGIN__").nth(1).unwrap_or("")
+            .split("__END__").next().unwrap_or("")
+            .to_string();
+
+        log::info!("SSH服务 - 提取的CPU信息块长度: {} 字符", block.len());
+        log::info!("SSH服务 - 提取的CPU信息块内容:\n{}", block);
+        
+        // 如果标记解析失败，尝试直接解析整个输出
+        let content = if block.len() < 10 {
+            log::info!("SSH服务 - 标记解析失败，使用整个输出");
+            output
+        } else {
+            &block
+        };
+
+        // 解析CPU型号 - 优先使用真正的CPU型号
+        let model = content
+            .lines()
+            .find(|l| l.contains("Model name:") && !l.contains("BIOS"))
+            .map(|l| l.replace("Model name:", "").trim().to_string())
+            .or_else(|| {
+                // 如果没有真正的Model name，尝试获取Vendor ID
+                content.lines()
+                    .find(|l| l.contains("Vendor ID:"))
+                    .map(|l| l.replace("Vendor ID:", "").trim().to_string())
+            })
+            .unwrap_or_else(|| "Unknown CPU".to_string());
+        
+        cpu_info.model = model;
+        log::info!("SSH服务 - CPU型号: {}", cpu_info.model);
+
+        // 解析核心数
+        let cores = content
+            .lines()
+            .find(|l| l.trim().parse::<u32>().is_ok())
+            .and_then(|l| l.trim().parse::<u32>().ok())
+            .unwrap_or(1);
+        
+        cpu_info.cores = cores;
+        log::info!("SSH服务 - CPU核心数: {}", cpu_info.cores);
+
+        // 解析CPU使用率
+        let cpu_line = content
+            .lines()
+            .find(|l| l.contains("Cpu(s)"))
+            .unwrap_or("")
+            .to_string();
+        
+        log::info!("SSH服务 - CPU使用率原始行: '{}'", cpu_line);
+        
+        // 解析CPU使用率 - 直接使用us（用户空间使用率）
+        if !cpu_line.is_empty() {
+            let us: f64 = cpu_line
+                .split(',')
+                .find(|s| s.contains("us"))
+                .and_then(|s| s.split('%').next())
+                .and_then(|v| v.trim().parse::<f64>().ok())
+                .unwrap_or(0.0);
+            
+            cpu_info.usage = us;
+            log::info!("SSH服务 - CPU使用率(us): {}%", cpu_info.usage);
+        } else {
+            cpu_info.usage = 0.0;
+            log::info!("SSH服务 - 未找到CPU使用率信息");
+        }
+
+        // 解析CPU频率
+        let freq_line = content
+            .lines()
+            .find(|l| l.contains("CPU MHz"))
+            .unwrap_or("")
+            .to_string();
+        
+        if !freq_line.is_empty() {
+            let freq_value = self.extract_number_from_output(&freq_line);
+            if let Some(freq) = freq_value.parse::<f64>().ok() {
+                cpu_info.frequency = Some(freq);
+                log::info!("SSH服务 - CPU频率: {} MHz", freq);
+            }
+        }
+
+        // 解析CPU温度
+        let temp_line = content
+            .lines()
+            .find(|l| l.trim().parse::<f64>().is_ok() && l.trim().len() > 3)
+            .unwrap_or("")
+            .to_string();
+        
+        if !temp_line.is_empty() {
+            let temp_value = self.extract_number_from_output(&temp_line);
+            if let Some(temp_millicelsius) = temp_value.parse::<f64>().ok() {
+                cpu_info.temperature = Some(temp_millicelsius / 1000.0); // 转换为摄氏度
+                log::info!("SSH服务 - CPU温度: {}°C", temp_millicelsius / 1000.0);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 解析 /proc/cpuinfo 输出（保留作为备用）
+    fn parse_cpuinfo(&self, output: &str, cpu_info: &mut CpuInfo) -> Result<(), String> {
+        log::info!("SSH服务 - 开始解析CPU信息，输出行数: {}", output.lines().count());
+        let mut processor_count = 0;
+        let mut model_name = String::new();
+        let mut cpu_cores = 0;
+        let mut physical_id_count = 0;
+        let mut seen_physical_ids = std::collections::HashSet::new();
+
+        for line in output.lines() {
+            if line.starts_with("processor") {
+                processor_count += 1;
+            } else if line.starts_with("model name") {
+                if model_name.is_empty() {
+                    model_name = line.split(':').nth(1)
+                        .map(|s| s.trim().to_string())
+                        .unwrap_or_else(|| "Unknown CPU".to_string());
+                }
+            } else if line.starts_with("cpu cores") {
+                if let Some(cores_str) = line.split(':').nth(1) {
+                    if let Ok(cores) = cores_str.trim().parse::<u32>() {
+                        cpu_cores = cores;
+                    }
+                }
+            } else if line.starts_with("physical id") {
+                if let Some(id_str) = line.split(':').nth(1) {
+                    if let Ok(id) = id_str.trim().parse::<u32>() {
+                        if seen_physical_ids.insert(id) {
+                            physical_id_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 改进CPU型号解析，获取完整型号
+        if !model_name.is_empty() {
+            cpu_info.model = model_name;
+        } else {
+            cpu_info.model = "Unknown CPU".to_string();
+        }
+
+        // 改进核心数计算 - 优先使用处理器数量
+        if processor_count > 0 {
+            // 处理器数量通常更准确，特别是对于虚拟化环境
+            cpu_info.cores = processor_count as u32;
+            log::info!("SSH服务 - 使用处理器数量作为核心数: {}", processor_count);
+        } else if cpu_cores > 0 && physical_id_count > 0 {
+            // 如果有物理CPU数量和每CPU核心数，计算总核心数
+            cpu_info.cores = cpu_cores * physical_id_count;
+            log::info!("SSH服务 - 使用物理CPU计算核心数: {} * {} = {}", cpu_cores, physical_id_count, cpu_info.cores);
+        } else if cpu_cores > 0 {
+            // 如果只有每CPU核心数，使用它
+            cpu_info.cores = cpu_cores;
+            log::info!("SSH服务 - 使用每CPU核心数: {}", cpu_cores);
+        } else {
+            // 最后备用方案
+            cpu_info.cores = 1;
+            log::info!("SSH服务 - 使用默认核心数: 1");
+        }
+
+        log::info!("SSH服务 - CPU解析结果: processor_count={}, cpu_cores={}, physical_id_count={}, 最终model='{}', 最终cores={}", 
+                   processor_count, cpu_cores, physical_id_count, cpu_info.model, cpu_info.cores);
+
+        Ok(())
+    }
+
+    /// 获取内存信息
+    pub async fn get_memory_info(&self, connection_id: &str) -> Result<MemoryInfo, String> {
+        log::info!("SSH服务 - 开始获取内存信息: {}", connection_id);
+        let mut memory_info = MemoryInfo::default();
+
+        // 获取内存信息
+        let meminfo_output = self.execute_command(connection_id, "cat /proc/meminfo").await?;
+        log::info!("SSH服务 - 内存信息原始输出长度: {} 字符", meminfo_output.len());
+        log::info!("SSH服务 - 内存信息原始输出内容:\n{}", meminfo_output);
+        
+        self.parse_meminfo(&meminfo_output, &mut memory_info)?;
+
+        // 尝试获取交换分区信息
+        match self.get_swap_info(connection_id).await {
+            Ok(swap_info) => {
+                memory_info.swap = Some(swap_info);
+                log::info!("SSH服务 - 交换分区获取成功");
+            },
+            Err(e) => {
+                log::error!("SSH服务 - 交换分区获取失败: {}", e);
+                memory_info.swap = None;
+            }
+        }
+
+        log::info!("SSH服务 - 内存信息解析完成: total={}MB, used={}MB, free={}MB, usage={:.2}%, swap={:?}", 
+                   memory_info.total, memory_info.used, memory_info.free, memory_info.usage, memory_info.swap);
+
+        Ok(memory_info)
+    }
+
+    /// 解析 /proc/meminfo 输出
+    fn parse_meminfo(&self, output: &str, memory_info: &mut MemoryInfo) -> Result<(), String> {
+        log::info!("SSH服务 - 开始解析内存信息");
+        let mut mem_total = 0u64;
+        let mut mem_available = 0u64;
+        let mut mem_free = 0u64;
+        let mut buffers = 0u64;
+        let mut cached = 0u64;
+
+        for line in output.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                if let Ok(value) = parts[1].parse::<u64>() {
+                    match parts[0] {
+                        "MemTotal:" => {
+                            mem_total = value;
+                            log::info!("SSH服务 - 总内存: {} KB", value);
+                        },
+                        "MemAvailable:" => {
+                            mem_available = value;
+                            log::info!("SSH服务 - 可用内存: {} KB", value);
+                        },
+                        "MemFree:" => {
+                            mem_free = value;
+                            log::info!("SSH服务 - 空闲内存: {} KB", value);
+                        },
+                        "Buffers:" => {
+                            buffers = value;
+                            log::info!("SSH服务 - 缓冲区: {} KB", value);
+                        },
+                        "Cached:" => {
+                            cached = value;
+                            log::info!("SSH服务 - 缓存: {} KB", value);
+                        },
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // 计算内存使用情况
+        memory_info.total = mem_total / 1024; // 转换为MB
+        memory_info.free = if mem_available > 0 { mem_available / 1024 } else { mem_free / 1024 };
+        memory_info.used = memory_info.total - memory_info.free;
+        
+        log::info!("SSH服务 - 内存计算: total={}MB, free={}MB, used={}MB", 
+                   memory_info.total, memory_info.free, memory_info.used);
+        
+        if memory_info.total > 0 {
+            memory_info.usage = (memory_info.used as f64 / memory_info.total as f64) * 100.0;
+            log::info!("SSH服务 - 内存使用率: {:.2}%", memory_info.usage);
+        }
+
+        Ok(())
+    }
+
+    /// 获取交换分区信息
+    async fn get_swap_info(&self, connection_id: &str) -> Result<crate::models::SwapInfo, String> {
+        log::info!("SSH服务 - 开始获取交换分区信息: {}", connection_id);
+        let mut swap_info = crate::models::SwapInfo::default();
+        
+        let meminfo_output = self.execute_command(connection_id, "cat /proc/meminfo | grep -i swap").await?;
+        log::info!("SSH服务 - 交换分区原始输出: {:?}", meminfo_output);
+        
+        // 清理ANSI颜色代码
+        let cleaned_output = self.clean_command_output(&meminfo_output);
+        log::info!("SSH服务 - 清理后的交换分区输出: {:?}", cleaned_output);
+        
+        let mut swap_total = 0u64;
+        let mut swap_free = 0u64;
+
+        for line in cleaned_output.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                if let Ok(value) = parts[1].parse::<u64>() {
+                    match parts[0] {
+                        "SwapTotal:" => {
+                            swap_total = value;
+                            log::info!("SSH服务 - 交换分区总量: {} KB", value);
+                        },
+                        "SwapFree:" => {
+                            swap_free = value;
+                            log::info!("SSH服务 - 交换分区空闲: {} KB", value);
+                        },
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        if swap_total > 0 {
+            swap_info.total = swap_total / 1024; // 转换为MB
+            swap_info.free = swap_free / 1024;
+            swap_info.used = swap_info.total - swap_info.free;
+            swap_info.usage = if swap_info.total > 0 {
+                (swap_info.used as f64 / swap_info.total as f64) * 100.0
+            } else {
+                0.0
+            };
+            log::info!("SSH服务 - 交换分区解析完成: total={}MB, used={}MB, free={}MB, usage={:.2}%", 
+                       swap_info.total, swap_info.used, swap_info.free, swap_info.usage);
+        } else {
+            log::info!("SSH服务 - 没有交换分区或交换分区为0");
+        }
+
+        Ok(swap_info)
+    }
+
+    /// 获取存储信息
+    pub async fn get_storage_info(&self, connection_id: &str) -> Result<Vec<StorageInfo>, String> {
+        let mut storage_list = Vec::new();
+
+        // 获取磁盘使用情况
+        let df_output = self.execute_command(connection_id, "df -h").await?;
+        self.parse_df_output(&df_output, &mut storage_list)?;
+
+        // 尝试获取磁盘类型信息（SSD/HDD）
+        self.enrich_storage_type_info(connection_id, &mut storage_list).await;
+
+        Ok(storage_list)
+    }
+
+    /// 解析 df -h 输出
+    fn parse_df_output(&self, output: &str, storage_list: &mut Vec<StorageInfo>) -> Result<(), String> {
+        for line in output.lines().skip(1) { // 跳过标题行
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 6 {
+                let device = parts[0].to_string();
+                let mount_point = parts[5].to_string();
+                
+                // 跳过特殊文件系统
+                if mount_point.starts_with("/proc") || 
+                   mount_point.starts_with("/sys") || 
+                   mount_point.starts_with("/dev") ||
+                   mount_point.starts_with("/run") ||
+                   mount_point.starts_with("/snap") ||
+                   mount_point.starts_with("/var/lib/docker") ||
+                   device.starts_with("tmpfs") ||
+                   device.starts_with("devtmpfs") ||
+                   device.starts_with("overlay") ||
+                   device.starts_with("squashfs") {
+                    continue;
+                }
+
+                let mut storage_info = StorageInfo::default();
+                storage_info.device = device;
+                storage_info.mount_point = mount_point;
+                storage_info.filesystem = parts[1].to_string();
+
+                // 解析容量信息
+                if let Ok(total_str) = parts[2].parse::<String>() {
+                    storage_info.total = self.parse_size_to_mb(&total_str);
+                }
+                if let Ok(used_str) = parts[3].parse::<String>() {
+                    storage_info.used = self.parse_size_to_mb(&used_str);
+                }
+                if let Ok(available_str) = parts[4].parse::<String>() {
+                    storage_info.free = self.parse_size_to_mb(&available_str);
+                }
+
+                // 计算使用率
+                if storage_info.total > 0 {
+                    storage_info.usage = (storage_info.used as f64 / storage_info.total as f64) * 100.0;
+                }
+
+                storage_list.push(storage_info);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 将大小字符串转换为MB
+    fn parse_size_to_mb(&self, size_str: &str) -> u64 {
+        let size_str = size_str.to_uppercase();
+        if let Some(num_part) = size_str.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect::<String>().parse::<f64>().ok() {
+            if size_str.contains('G') {
+                (num_part * 1024.0) as u64
+            } else if size_str.contains('T') {
+                (num_part * 1024.0 * 1024.0) as u64
+            } else if size_str.contains('K') {
+                (num_part / 1024.0) as u64
+            } else {
+                num_part as u64
+            }
+        } else {
+            0
+        }
+    }
+
+    /// 丰富存储类型信息
+    async fn enrich_storage_type_info(&self, connection_id: &str, storage_list: &mut Vec<StorageInfo>) {
+        // 尝试使用 lsblk 获取磁盘类型信息
+        let lsblk_output = self.execute_command(connection_id, "lsblk -d -o NAME,TYPE,ROTA").await.ok();
+        
+        if let Some(output) = lsblk_output {
+            for storage in storage_list.iter_mut() {
+                // 从设备名提取磁盘名（如 /dev/sda1 -> sda）
+                if let Some(disk_name) = storage.device.strip_prefix("/dev/") {
+                    let disk_name = disk_name.chars().take_while(|c| c.is_alphabetic()).collect::<String>();
+                    
+                    for line in output.lines() {
+                        if line.contains(&disk_name) {
+                            // ROTA=1 表示机械硬盘，ROTA=0 表示SSD
+                            if line.contains("ROTA=0") {
+                                storage.r#type = "ssd".to_string();
+                            } else if line.contains("ROTA=1") {
+                                storage.r#type = "hdd".to_string();
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// 获取网络信息
+    pub async fn get_network_info(&self, connection_id: &str) -> Result<NetworkInfo, String> {
+        let mut network_info = NetworkInfo::default();
+
+        // 获取网络接口统计信息
+        let netdev_output = self.execute_command(connection_id, "cat /proc/net/dev").await?;
+        self.parse_netdev_output(&netdev_output, &mut network_info)?;
+
+        // 获取网络接口状态
+        let ip_output = self.execute_command(connection_id, "ip addr show").await.ok();
+        if let Some(output) = ip_output {
+            self.enrich_network_status(&output, &mut network_info);
+        }
+
+        // 计算总流量和速度
+        self.calculate_network_totals(&mut network_info);
+
+        Ok(network_info)
+    }
+
+    /// 解析 /proc/net/dev 输出
+    fn parse_netdev_output(&self, output: &str, network_info: &mut NetworkInfo) -> Result<(), String> {
+        for line in output.lines().skip(2) { // 跳过标题行
+            let parts: Vec<&str> = line.split(':').collect();
+            if parts.len() >= 2 {
+                let interface_name = parts[0].trim().to_string();
+                
+                // 跳过回环接口
+                if interface_name == "lo" {
+                    continue;
+                }
+
+                let stats: Vec<&str> = parts[1].split_whitespace().collect();
+                if stats.len() >= 16 {
+                    let mut interface = crate::models::NetworkInterface::default();
+                    interface.name = interface_name;
+
+                    // 解析统计信息
+                    if let Ok(rx_bytes) = stats[0].parse::<u64>() {
+                        interface.rx = rx_bytes;
+                    }
+                    if let Ok(tx_bytes) = stats[8].parse::<u64>() {
+                        interface.tx = tx_bytes;
+                    }
+
+                    network_info.interfaces.push(interface);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 丰富网络接口状态信息
+    fn enrich_network_status(&self, output: &str, network_info: &mut NetworkInfo) {
+        for interface in network_info.interfaces.iter_mut() {
+            // 检查接口是否在线
+            if output.contains(&format!("{}:", interface.name)) {
+                // 简单检查：如果接口在输出中且包含 "UP"，则认为是在线状态
+                if output.contains("UP") {
+                    interface.status = "up".to_string();
+                } else {
+                    interface.status = "down".to_string();
+                }
+            }
+        }
+    }
+
+    /// 计算网络总流量和速度
+    fn calculate_network_totals(&self, network_info: &mut NetworkInfo) {
+        let mut total_rx = 0u64;
+        let mut total_tx = 0u64;
+
+        for interface in &network_info.interfaces {
+            total_rx += interface.rx;
+            total_tx += interface.tx;
+        }
+
+        network_info.total_rx = total_rx;
+        network_info.total_tx = total_tx;
+
+        // 计算速度（这里简化处理，实际应该基于时间间隔计算）
+        // 在实际应用中，应该保存上次的统计值来计算速度
+        network_info.rx_speed = 0.0; // 暂时设为0，需要实现速度计算逻辑
+        network_info.tx_speed = 0.0;
+    }
+
+    /// 获取完整的硬件信息
+    pub async fn get_hardware_info(&self, connection_id: &str) -> Result<HardwareInfo, String> {
+        log::info!("开始获取硬件信息: {}", connection_id);
+
+        // 检查连接是否存在（只获取一次读锁）
+        let connections = self.connections.read().await;
+        log::info!("SSH服务中的连接数量: {}", connections.len());
+        
+        // 调试：打印所有连接信息
+        for (id, conn) in connections.iter() {
+            log::info!("SSH连接 - ID: {}, 状态: {:?}", id, conn.status);
+        }
+        
+        // 检查指定连接是否存在
+        if !connections.contains_key(connection_id) {
+            log::error!("连接不存在: {}, 可用连接: {:?}", connection_id, connections.keys().collect::<Vec<_>>());
+            return Err(format!("连接不存在: {}", connection_id));
+        }
+        
+        // 检查连接状态
+        if let Some(conn) = connections.get(connection_id) {
+            if !matches!(conn.status, ConnectionStatus::Connected) {
+                log::error!("连接状态异常: {} 状态为 {:?}", connection_id, conn.status);
+                return Err(format!("连接状态异常: {:?}", conn.status));
+            }
+        }
+        
+        drop(connections); // 显式释放锁
+
+        // 串行获取各种硬件信息，避免SSH通道并发访问问题
+        let cpu = self.get_cpu_info(connection_id).await?;
+        let memory = self.get_memory_info(connection_id).await?;
+        let storage = self.get_storage_info(connection_id).await?;
+        let network = self.get_network_info(connection_id).await?;
+
+        let hardware_info = HardwareInfo {
+            cpu,
+            memory,
+            storage,
+            network,
+            timestamp: chrono::Utc::now(),
+        };
+
+        log::info!("硬件信息获取成功: {}", connection_id);
+        Ok(hardware_info)
+    }
+
+    /// 从命令输出中提取数字部分
+    /// 去除命令本身、提示符等干扰内容
+    fn extract_number_from_output(&self, output: &str) -> String {
+        // 按行分割，寻找包含数字的行
+        for line in output.lines() {
+            let trimmed = line.trim();
+            // 跳过空行和包含命令的行
+            if trimmed.is_empty() || trimmed.contains("grep") || trimmed.contains("awk") || 
+               trimmed.contains("sed") || trimmed.contains("top") || trimmed.contains("vmstat") ||
+               trimmed.contains("cat") || trimmed.contains("lscpu") || trimmed.contains("sensors") ||
+               trimmed.contains("[root@") || trimmed.contains("]#") {
+                continue;
+            }
+            
+            // 提取数字部分（包括小数点和负号）
+            let mut number = String::new();
+            let mut found_digit = false;
+            for ch in trimmed.chars() {
+                if ch.is_ascii_digit() || ch == '.' || ch == '-' {
+                    number.push(ch);
+                    found_digit = true;
+                } else if found_digit {
+                    // 找到数字后遇到非数字字符就停止
+                    break;
+                }
+            }
+            
+            if !number.is_empty() && number.parse::<f64>().is_ok() {
+                return number;
+            }
+        }
+        
+        // 如果没有找到有效的数字，返回空字符串
+        String::new()
+    }
+
+    /// 从 /proc/stat 计算CPU使用率
+    /// 注意：单次采样无法计算准确的使用率，这里返回0表示需要使用其他方法
+    fn calculate_cpu_usage_from_stat(&self, stat_output: &str) -> f64 {
+        // 解析 /proc/stat 的第一行
+        // 格式：cpu user nice system idle iowait irq softirq steal guest guest_nice
+        let parts: Vec<&str> = stat_output.split_whitespace().collect();
+        if parts.len() < 8 {
+            log::warn!("SSH服务 - /proc/stat 格式不正确，字段数量: {}", parts.len());
+            return 0.0;
+        }
+
+        // 解析各个时间值
+        let user: u64 = parts[1].parse().unwrap_or(0);
+        let nice: u64 = parts[2].parse().unwrap_or(0);
+        let system: u64 = parts[3].parse().unwrap_or(0);
+        let idle: u64 = parts[4].parse().unwrap_or(0);
+        let iowait: u64 = parts[5].parse().unwrap_or(0);
+        let irq: u64 = parts[6].parse().unwrap_or(0);
+        let softirq: u64 = parts[7].parse().unwrap_or(0);
+        let steal: u64 = if parts.len() > 8 { parts[8].parse().unwrap_or(0) } else { 0 };
+
+        // 计算总时间
+        let total_time = user + nice + system + idle + iowait + irq + softirq + steal;
+        let idle_time = idle + iowait;
+
+        log::info!("SSH服务 - CPU时间统计: user={}, nice={}, system={}, idle={}, iowait={}, irq={}, softirq={}, steal={}", 
+                   user, nice, system, idle, iowait, irq, softirq, steal);
+        log::info!("SSH服务 - CPU时间统计: total={}, idle={}, used={}", 
+                   total_time, idle_time, total_time - idle_time);
+
+        // 单次采样无法计算准确的使用率，返回0让系统使用其他方法
+        log::info!("SSH服务 - 单次采样无法计算准确使用率，使用备用方法");
+        0.0
     }
 }
 

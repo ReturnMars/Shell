@@ -1,5 +1,10 @@
 <template>
-  <n-card size="small" class="cpu-monitor" :content-style="{ padding: '8px' }" :header-style="{ padding: '8px 8px 4px 8px' }">
+  <n-card
+    size="small"
+    class="cpu-monitor"
+    :content-style="{ padding: '8px' }"
+    :header-style="{ padding: '8px 8px 4px 8px' }"
+  >
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
@@ -9,7 +14,7 @@
           <span class="text-sm font-medium">CPU</span>
         </div>
         <n-tag size="small" :type="getCpuStatusType(cpuInfo?.usage || 0)">
-          {{ cpuInfo?.usage || 0 }}%
+          {{ cpuInfo?.usage?.toFixed(2) || 0 }}%
         </n-tag>
       </div>
     </template>
@@ -66,7 +71,7 @@ interface Props {
   cpuInfo?: CpuInfo | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const getCpuStatusType = (usage: number) => {
   if (usage >= 90) return "error";

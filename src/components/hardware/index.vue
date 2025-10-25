@@ -9,7 +9,7 @@
       </div>
       <div class="flex items-center gap-2">
         <!-- 刷新模式切换 -->
-        <n-tooltip trigger="hover" :disabled="!isConnected">
+        <n-tooltip trigger="hover" :disabled="!isCurrentConnectionConnected">
           <template #trigger>
             <n-button
               quaternary
@@ -18,13 +18,15 @@
               :type="autoRefresh ? 'primary' : 'default'"
               @click="toggleAutoRefresh"
               class="refresh-mode-btn"
-              :disabled="!isConnected"
+              :disabled="!isCurrentConnectionConnected"
             >
               <template #icon>
                 <n-icon size="16" :color="autoRefresh ? '#18a058' : '#9ca4ae'">
-                  <span :class="{
-                    'cloud-sync-icon': !autoRefresh,
-                  }">
+                  <span
+                    :class="{
+                      'cloud-sync-icon': !autoRefresh,
+                    }"
+                  >
                     <CloudSyncOutlined />
                   </span>
                 </n-icon>
@@ -43,7 +45,7 @@
               size="tiny"
               :loading="loading"
               @click="handleRefresh"
-              :disabled="!isConnected"
+              :disabled="!isCurrentConnectionConnected"
             >
               <template #icon>
                 <n-icon>
@@ -60,9 +62,9 @@
     <!-- 硬件信息内容 -->
     <div class="hardware-content" ref="contentRef" @scroll="handleScroll">
       <!-- 加载状态 -->
-      <div v-if="loading && !hardwareInfo" class="loading-container">
+      <div v-if="loading && !hardwareInfo" class="hardware-loading">
         <n-spin size="small">
-          <div class="loading-text">正在获取硬件信息...</div>
+          <div class="hardware-loading-text">正在获取硬件信息...</div>
         </n-spin>
       </div>
 
@@ -111,12 +113,35 @@
     <!-- 底部状态信息 -->
     <div v-if="hardwareInfo" class="hardware-footer">
       <div class="status-info">
+        <!-- 连接状态详情 -->
+        <n-tooltip trigger="hover" v-if="currentConnectionState">
+          <template #trigger>
+            <n-icon
+              size="14"
+              :color="isCurrentConnectionConnected ? '#18a058' : '#d03050'"
+            >
+              <ExclamationCircleOutlined />
+            </n-icon>
+          </template>
+          <div class="text-xs">
+            <div>状态: {{ currentConnectionState.status }}</div>
+            <div v-if="currentConnectionState.error">
+              错误: {{ currentConnectionState.error }}
+            </div>
+            <div>
+              重试次数: {{ currentConnectionState.retryCount }}/{{
+                currentConnectionState.maxRetries
+              }}
+            </div>
+            <div>
+              最后检查:
+              {{ new Date(currentConnectionState.lastCheck).toLocaleString() }}
+            </div>
+          </div>
+        </n-tooltip>
         <span class="status-text">
           最后更新: {{ formatLastUpdate(lastUpdate) }}
         </span>
-        <n-tag size="tiny" :type="isConnected ? 'success' : 'default'">
-          {{ isConnected ? "已连接" : "未连接" }}
-        </n-tag>
       </div>
     </div>
   </div>
@@ -126,7 +151,6 @@
 import { computed, onMounted, onUnmounted, watch, ref } from "vue";
 import {
   CloudSyncOutlined,
-  SwapRightOutlined,
   SyncOutlined,
   ExclamationCircleOutlined,
   DisconnectOutlined,
@@ -151,16 +175,26 @@ const error = computed(() => hardwareStore.error);
 const hardwareInfo = computed(() => hardwareStore.hardwareInfo);
 const lastUpdate = computed(() => hardwareStore.lastUpdate);
 const autoRefresh = computed(() => hardwareStore.autoRefresh);
-const isConnected = computed(() => hardwareStore.isConnected);
+
+// 当前连接
+const currentConnection = computed(() => connectionStore.currentConnection);
 
 // 当前连接ID
-const currentConnectionId = computed(
-  () => connectionStore.currentConnection?.id
+const currentConnectionId = computed(() => currentConnection.value?.id);
+
+// 当前连接是否已连接 - 使用新的状态管理器
+const isCurrentConnectionConnected = computed(
+  () => connectionStore.isCurrentConnectionConnected
+);
+
+// 当前连接状态
+const currentConnectionState = computed(
+  () => connectionStore.currentConnectionState
 );
 
 // 方法
 const handleRefresh = async () => {
-  if (currentConnectionId.value) {
+  if (currentConnectionId.value && isCurrentConnectionConnected.value) {
     await hardwareStore.refreshHardwareInfo(currentConnectionId.value);
   }
 };
@@ -198,32 +232,101 @@ const formatLastUpdate = (timestamp: number | null) => {
 
 // 监听连接变化
 watch(
-  currentConnectionId,
-  async (newConnectionId, oldConnectionId) => {
-    if (newConnectionId && newConnectionId !== oldConnectionId) {
-      // 连接变化时获取硬件信息
-      await hardwareStore.fetchHardwareInfo(newConnectionId);
-      // 开始自动刷新
-      hardwareStore.startAutoRefresh(newConnectionId);
-    } else if (!newConnectionId) {
-      // 断开连接时清除硬件信息
-      hardwareStore.clearHardwareInfo();
+  [currentConnectionId, isCurrentConnectionConnected],
+  async ([newConnectionId, isConnected], [oldConnectionId, wasConnected]) => {
+    console.log("硬件监控 - 连接状态变化:", {
+      newConnectionId,
+      oldConnectionId,
+      isConnected,
+      wasConnected,
+      currentConnection: connectionStore.currentConnection,
+      connectionState: currentConnectionState.value,
+    });
+
+    // 如果连接ID变化了，或者连接状态变化了
+    if (newConnectionId !== oldConnectionId || isConnected !== wasConnected) {
+      if (newConnectionId && isConnected) {
+        // 有连接ID且已连接 - 获取硬件信息
+        console.log("硬件监控 - 开始获取硬件信息:", newConnectionId);
+        await hardwareStore.fetchHardwareInfo(newConnectionId);
+        // 开始自动刷新
+        hardwareStore.startAutoRefresh(newConnectionId);
+      } else {
+        // 没有连接ID或未连接 - 清除硬件信息并停止自动刷新
+        console.log("硬件监控 - 清除硬件信息并停止自动刷新");
+        hardwareStore.clearHardwareInfo();
+        hardwareStore.stopAutoRefresh();
+      }
     }
   },
   { immediate: true }
 );
 
+// 监听连接状态变化（处理错误和重连）
+watch(currentConnectionState, (newState, oldState) => {
+  if (newState && oldState && newState.status !== oldState.status) {
+    console.log("硬件监控 - 连接状态变化:", {
+      connectionId: newState.id,
+      oldStatus: oldState.status,
+      newStatus: newState.status,
+      error: newState.error,
+    });
+
+    // 如果连接状态变为错误或断开，清除硬件信息
+    if (newState.status === "error" || newState.status === "disconnected") {
+      console.log("硬件监控 - 连接状态异常，清除硬件信息并停止自动刷新");
+      hardwareStore.clearHardwareInfo();
+      hardwareStore.stopAutoRefresh();
+    }
+
+    // 如果连接状态变为连接中，且之前不是连接状态，尝试获取硬件信息
+    if (newState.status === "connected" && oldState.status !== "connected") {
+      console.log("硬件监控 - 连接状态恢复，重新获取硬件信息");
+      if (currentConnectionId.value) {
+        hardwareStore.fetchHardwareInfo(currentConnectionId.value);
+        hardwareStore.startAutoRefresh(currentConnectionId.value);
+      }
+    }
+  }
+});
+
+// 监听硬件store的错误状态（已由连接状态管理器处理，这里只记录日志）
+watch(
+  () => hardwareStore.error,
+  (error) => {
+    if (error) {
+      console.log("硬件监控 - 硬件store错误:", error);
+    }
+  }
+);
+
 // 组件挂载时初始化
 onMounted(async () => {
-  if (currentConnectionId.value) {
+  console.log("硬件监控 - 组件挂载");
+  console.log("硬件监控 - 当前连接:", currentConnection.value);
+  console.log("硬件监控 - 连接ID:", currentConnectionId.value);
+  console.log("硬件监控 - 是否已连接:", isCurrentConnectionConnected.value);
+  console.log("硬件监控 - 当前连接状态:", currentConnectionState.value);
+
+  // 初始化连接状态管理器
+  connectionStore.initializeStateManager();
+
+  // 同步后端连接状态
+  await connectionStore.connectionStateManager.syncBackendConnections();
+
+  if (currentConnectionId.value && isCurrentConnectionConnected.value) {
+    console.log("硬件监控 - 挂载时开始获取硬件信息");
     await hardwareStore.fetchHardwareInfo(currentConnectionId.value);
     hardwareStore.startAutoRefresh(currentConnectionId.value);
+  } else {
+    console.log("硬件监控 - 挂载时条件不满足，不获取硬件信息");
   }
 });
 
 // 组件卸载时清理
 onUnmounted(() => {
   hardwareStore.cleanup();
+  connectionStore.cleanupStateManager();
 });
 </script>
 
@@ -232,6 +335,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .hardware-header {
@@ -258,11 +362,13 @@ onUnmounted(() => {
   min-height: 0; /* 确保 flex 子元素可以收缩 */
 }
 
-.loading-container {
+.hardware-loading {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 120px;
+  min-height: 80px;
+  padding: 20px;
+  margin: 8px 0;
 }
 
 .loading-text {
@@ -309,8 +415,8 @@ onUnmounted(() => {
 
 .status-info {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.25rem;
 }
 
 .status-text {

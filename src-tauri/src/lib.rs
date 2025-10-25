@@ -10,6 +10,7 @@ pub mod utils;
 pub use models::*;
 pub use commands::connection_commands::*;
 pub use commands::storage_commands::*;
+pub use commands::hardware_commands::*;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -18,8 +19,9 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化日志
-    env_logger::init();
+    // 初始化日志 - 设置日志级别为 INFO
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .init();
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -52,6 +54,15 @@ pub fn run() {
             close_all_tabs,
             close_other_tabs,
             get_tab_by_connection_id,
+            // 连接健康检查
+            check_connection_status,
+            reconnect_ssh,
+            // 硬件信息相关命令
+            get_hardware_info,
+            get_cpu_info,
+            get_memory_info,
+            get_storage_info,
+            get_network_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

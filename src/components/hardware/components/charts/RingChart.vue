@@ -31,7 +31,6 @@
         <!-- 中心文字 -->
         <div class="ring-center">
           <div class="ring-percentage">{{ Math.round(percentage) }}%</div>
-          <div class="ring-label">{{ label }}</div>
         </div>
       </div>
     </div>
@@ -134,12 +133,5 @@ const backgroundColor = computed(() => '#f0f0f0');
   font-weight: 700;
   color: #333;
   line-height: 1;
-  margin-bottom: 4px;
-}
-
-.ring-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: 500;
 }
 </style>
