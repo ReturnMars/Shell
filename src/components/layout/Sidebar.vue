@@ -19,43 +19,9 @@
         <ConnectionList />
       </div>
 
-      <!-- 分组区域 -->
-      <div class="mb-4 flex-1 overflow-y-auto">
-        <div class="flex items-center justify-between mb-2">
-          <span
-            class="text-xs font-medium text-gray-600 uppercase tracking-wider"
-            >分组</span
-          >
-          <n-button quaternary circle size="small">
-            <template #icon>
-              <n-icon>
-                <PlusOutlined />
-              </n-icon>
-            </template>
-          </n-button>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <n-card hoverable size="small" class="cursor-pointer">
-            <div class="flex items-center gap-3">
-              <n-icon size="16" color="#666">
-                <CloudServerOutlined />
-              </n-icon>
-              <span class="text-sm text-gray-800 flex-1">服务器</span>
-              <n-tag size="small" type="info" round>3</n-tag>
-            </div>
-          </n-card>
-
-          <n-card hoverable size="small" class="cursor-pointer">
-            <div class="flex items-center gap-3">
-              <n-icon size="16" color="#666">
-                <FileTextOutlined />
-              </n-icon>
-              <span class="text-sm text-gray-800 flex-1">开发环境</span>
-              <n-tag size="small" type="info" round>2</n-tag>
-            </div>
-          </n-card>
-        </div>
+      <!-- 硬件监控区域 -->
+      <div class="flex-1 overflow-y-auto">
+        <HardwareMonitor />
       </div>
     </div>
 
@@ -91,14 +57,12 @@
 
 <script setup lang="ts">
 import {
-  CloudServerOutlined,
-  FileTextOutlined,
   SettingOutlined,
   QuestionCircleOutlined,
   CodeOutlined,
-  PlusOutlined,
 } from "@vicons/antd";
 import ConnectionList from "../connection/ConnectionList.vue";
+import HardwareMonitor from "../hardware/index.vue";
 
 // 方法
 

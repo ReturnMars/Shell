@@ -16,6 +16,9 @@ pub struct ConnectionConfig {
     pub connected: bool,
     #[serde(default = "default_false")]
     pub active: bool,
+    /// 终端提示符检测配置
+    #[serde(default = "default_prompt_config")]
+    pub prompt_config: PromptConfig,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -23,6 +26,59 @@ pub struct ConnectionConfig {
 /// 默认值函数
 fn default_false() -> bool {
     false
+}
+
+/// 终端提示符检测配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromptConfig {
+    /// 自定义提示符模式列表
+    pub patterns: Vec<String>,
+    /// 是否启用智能检测
+    pub smart_detection: bool,
+    /// 最大等待时间（毫秒）
+    pub max_wait_time: u64,
+    /// 连续空读取的最大次数
+    pub max_empty_reads: u32,
+}
+
+/// 默认提示符配置
+fn default_prompt_config() -> PromptConfig {
+    PromptConfig {
+        patterns: vec![
+            "]# ".to_string(),
+            "$ ".to_string(), 
+            "> ".to_string(),
+            "# ".to_string(),
+            "% ".to_string(),
+        ],
+        smart_detection: true,
+        max_wait_time: 10_000, // 5秒
+        max_empty_reads: 10,
+    }
+}
+
+/// 命令执行选项
+#[derive(Debug, Clone)]
+pub struct CommandOptions {
+    /// 自定义提示符模式（覆盖连接配置）
+    pub custom_prompts: Option<Vec<String>>,
+    /// 超时时间（毫秒）
+    pub timeout: Option<u64>,
+    /// 是否等待提示符出现
+    pub wait_for_prompt: bool,
+    /// 是否启用调试输出
+    pub debug_output: bool,
+}
+
+impl Default for CommandOptions {
+    fn default() -> Self {
+        Self {
+            custom_prompts: None,
+            timeout: None,
+            wait_for_prompt: true,
+            debug_output: false,
+        }
+    }
 }
 
 /// 认证方式
@@ -102,6 +158,7 @@ impl Default for ConnectionConfig {
             auth_method: AuthMethod::Password,
             connected: false,
             active: false,
+            prompt_config: default_prompt_config(),
             created_at: now,
             updated_at: now,
         }
@@ -125,6 +182,7 @@ impl ConnectionConfig {
             auth_method: AuthMethod::Password,
             connected: false,
             active: false,
+            prompt_config: default_prompt_config(),
             created_at: now,
             updated_at: now,
         }

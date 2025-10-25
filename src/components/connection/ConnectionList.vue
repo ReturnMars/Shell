@@ -1,9 +1,10 @@
 <template>
   <!-- 连接项列表 -->
-  <div class="flex flex-col gap-1">
+  <div class="flex flex-col">
     <!-- 标题栏 -->
     <div
-      class="flex items-center justify-between mb-3 sticky top-0 bg-white z-10"
+      class="flex items-center justify-between sticky top-0 pb-2 bg-white z-10 transition-all duration-200"
+      :class="{ 'scrolled': isScrolled }"
     >
       <div>
         <span
@@ -56,24 +57,25 @@
         </n-button>
       </div>
     </div>
-    <n-card
-      v-for="connection in connectionStore.connections"
-      :key="connection.id"
-      :class="[
-        'cursor-pointer transition-all duration-200 group',
-        connection.id === connectionStore.currentConnection?.id
-          ? 'border-green-500! bg-green-50 border-1! border-solid! bg-green-50!'
-          : '',
-      ]"
-      hoverable
-      :style="{
-        '--n-padding-left': '14px',
-        '--n-padding-right': '14px',
-        '--n-padding-top': '8px',
-        '--n-padding-bottom': '8px',
-      }"
-      @click="selectConnection(connection)"
-    >
+    <div class="connection-content" ref="contentRef" @scroll="handleScroll">
+      <n-card
+        v-for="connection in connectionStore.connections"
+        :key="connection.id"
+        :class="[
+          'cursor-pointer transition-all duration-200 group connection-item',
+          connection.id === connectionStore.currentConnection?.id
+            ? 'border-green-500! bg-green-50 border-1! border-solid! bg-green-50!'
+            : '',
+        ]"
+        hoverable
+        :style="{
+          '--n-padding-left': '14px',
+          '--n-padding-right': '14px',
+          '--n-padding-top': '8px',
+          '--n-padding-bottom': '8px',
+        }"
+        @click="selectConnection(connection)"
+      >
       <div class="flex items-center gap-3">
         <!-- 连接状态指示器 -->
         <ConnectionStatus
@@ -163,11 +165,12 @@
         </div>
       </div>
     </n-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { ConnectionConfig, useConnectionStore } from "@/stores/connection";
 import {
   EditOutlined,
@@ -180,13 +183,17 @@ import { useMessage, NTooltip } from "naive-ui";
 const connectionStore = useConnectionStore();
 const message = useMessage();
 
-// 显示添加连接对话框
-const showAddConnection = () => {
-  // 直接在这里处理添加连接逻辑
-  // 可以通过全局状态或者其他方式来处理
-  console.log("显示添加连接对话框");
-  // TODO: 实现添加连接逻辑
+// 滚动状态
+const contentRef = ref<HTMLElement>();
+const isScrolled = ref(false);
+
+// 处理滚动事件
+const handleScroll = () => {
+  if (contentRef.value) {
+    isScrolled.value = contentRef.value.scrollTop > 0;
+  }
 };
+
 
 // 设置当前选中的链接
 const selectConnection = async (connection: ConnectionConfig) => {
@@ -280,4 +287,41 @@ onMounted(() => {
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+.connection-content {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.connection-item {
+  margin-bottom: 0;
+}
+
+.connection-content::-webkit-scrollbar {
+  width: 3px;
+}
+
+.connection-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.connection-content::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.connection-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* 滚动时的阴影效果 */
+.flex.items-center.justify-between.sticky.top-0.bg-white.z-10.scrolled {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+}
+</style>

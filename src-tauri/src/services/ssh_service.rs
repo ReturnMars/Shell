@@ -1,5 +1,5 @@
 // SSH连接服务
-use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo};
+use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo, CommandOptions};
 use crate::services::connection_storage::ConnectionStorage;
 use ssh2::{Session, Sftp};
 use std::collections::HashMap;
@@ -231,15 +231,28 @@ impl SshService {
         }
     }
 
-    /// 执行SSH命令 - 专业级优化版本
+    /// 执行SSH命令 - 优化版本
     pub async fn execute_command(
         &self,
         connection_id: &str,
         command: &str,
     ) -> Result<String, String> {
-        println!("=== execute_command 开始 ===");
-        println!("connection_id: {}", connection_id);
-        println!("command: {:?}", command);
+        self.execute_command_with_options(connection_id, command, CommandOptions::default()).await
+    }
+
+    /// 执行SSH命令 - 带选项的完整版本
+    pub async fn execute_command_with_options(
+        &self,
+        connection_id: &str,
+        command: &str,
+        options: CommandOptions,
+    ) -> Result<String, String> {
+        if options.debug_output {
+            println!("=== execute_command_with_options 开始 ===");
+            println!("connection_id: {}", connection_id);
+            println!("command: {:?}", command);
+            println!("options: {:?}", options);
+        }
 
         // 获取连接并执行命令
         let mut connections = self.connections.write().await;
@@ -251,12 +264,13 @@ impl SshService {
 
             // 使用持久化的shell通道
             if let Some(ref mut shell_channel) = connection.shell_channel {
-                // 发送命令（不等待）
+                // 发送命令
                 let command_to_send = if command.ends_with('\n') || command.ends_with('\r') {
                     command.to_string()
                 } else {
                     format!("{}\n", command)
                 };
+                
                 shell_channel
                     .write_all(command_to_send.as_bytes())
                     .map_err(|e| format!("发送命令失败: {}", e))?;
@@ -264,58 +278,156 @@ impl SshService {
                     .flush()
                     .map_err(|e| format!("刷新缓冲区失败: {}", e))?;
 
-                // 立即开始读取，不等待
-                let mut output = String::new();
-                let mut buffer = [0u8; 4096]; // 增大缓冲区
-
-                // 快速读取循环
-                let mut empty_reads = 0; // 连续空读取计数
-                let max_empty_reads = 5; // 最多允许5次连续空读取
-                
-                for attempt in 0..5 { // 最多5次尝试
-                    match shell_channel.read(&mut buffer) {
-                        Ok(0) => {
-                            empty_reads += 1;
-                            println!("第{}次尝试：读取到0字节，连续空读取: {}", attempt + 1, empty_reads);
-                            
-                            // 如果连续空读取次数过多，可能命令已完成
-                            if empty_reads >= max_empty_reads {
-                                println!("连续{}次空读取，可能命令已完成", max_empty_reads);
-                                break;
-                            }
-                            
-                            // 短暂等待更多数据
-                            tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-                        },
-                        Ok(n) => {
-                            empty_reads = 0; // 重置空读取计数
-                            let chunk = String::from_utf8_lossy(&buffer[..n]);
-                            output.push_str(&chunk);
-                            println!("第{}次尝试：读取到{}字节: {:?}", attempt + 1, n, chunk);
-
-                            // 检查是否包含提示符（命令完成）
-                            if chunk.contains("]# ") || chunk.contains("$ ") || chunk.contains("> ") {
-                                println!("检测到提示符，命令执行完成");
-                                break;
-                            }
-
-                            // 短暂等待更多数据
-                            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                        },
-                        Err(e) => {
-                            println!("读取失败: {:?}，停止读取", e);
-                            break; // 读取错误，停止
-                        }
-                    }
-                }
-
-                Ok(output)
+                // 智能读取输出
+                self.read_command_output(shell_channel, &connection.config, &options).await
             } else {
                 Err("Shell通道不存在".to_string())
             }
         } else {
             Err("连接不存在".to_string())
         }
+    }
+
+    /// 智能读取命令输出
+    async fn read_command_output(
+        &self,
+        shell_channel: &mut ssh2::Channel,
+        config: &ConnectionConfig,
+        options: &CommandOptions,
+    ) -> Result<String, String> {
+        let mut output = String::new();
+        let mut buffer = [0u8; 4096];
+        
+        // 获取提示符模式
+        let prompt_patterns = options.custom_prompts.as_ref()
+            .unwrap_or(&config.prompt_config.patterns);
+        
+        // 获取配置参数
+        let max_wait_time = options.timeout.unwrap_or(config.prompt_config.max_wait_time);
+        let max_empty_reads = config.prompt_config.max_empty_reads;
+        
+        let start_time = std::time::Instant::now();
+        let mut empty_reads = 0;
+        let mut last_data_time = std::time::Instant::now();
+        
+        loop {
+            // 检查超时
+            if start_time.elapsed().as_millis() as u64 > max_wait_time {
+                if options.debug_output {
+                    println!("命令执行超时，停止读取");
+                }
+                break;
+            }
+            
+            // 检查是否等待提示符
+            if !options.wait_for_prompt {
+                // 不等待提示符，只读取一次
+                match shell_channel.read(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        let chunk = String::from_utf8_lossy(&buffer[..n]);
+                        output.push_str(&chunk);
+                        if options.debug_output {
+                            println!("读取到{}字节: {:?}", n, chunk);
+                        }
+                        break;
+                    }
+                    Err(e) => {
+                        if options.debug_output {
+                            println!("读取失败: {:?}", e);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                // 等待提示符模式
+                match shell_channel.read(&mut buffer) {
+                    Ok(0) => {
+                        empty_reads += 1;
+                        if options.debug_output {
+                            println!("读取到0字节，连续空读取: {}", empty_reads);
+                        }
+                        
+                        // 如果连续空读取次数过多，可能命令已完成
+                        if empty_reads >= max_empty_reads {
+                            if options.debug_output {
+                                println!("连续{}次空读取，可能命令已完成", max_empty_reads);
+                            }
+                            break;
+                        }
+                        
+                        // 如果长时间没有数据，可能命令已完成
+                        if last_data_time.elapsed().as_millis() > 1000 {
+                            if options.debug_output {
+                                println!("长时间无数据，可能命令已完成");
+                            }
+                            break;
+                        }
+                        
+                        // 短暂等待更多数据
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                    }
+                    Ok(n) => {
+                        empty_reads = 0; // 重置空读取计数
+                        last_data_time = std::time::Instant::now();
+                        
+                        let chunk = String::from_utf8_lossy(&buffer[..n]);
+                        output.push_str(&chunk);
+                        
+                        if options.debug_output {
+                            println!("读取到{}字节: {:?}", n, chunk);
+                        }
+
+                        // 检查是否包含提示符（命令完成）
+                        if self.detect_prompt(&chunk, prompt_patterns, &config.prompt_config) {
+                            if options.debug_output {
+                                println!("检测到提示符，命令执行完成");
+                            }
+                            break;
+                        }
+
+                        // 短暂等待更多数据
+                        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    }
+                    Err(e) => {
+                        if options.debug_output {
+                            println!("读取失败: {:?}，停止读取", e);
+                        }
+                        break; // 读取错误，停止
+                    }
+                }
+            }
+        }
+
+        Ok(output)
+    }
+
+    /// 检测提示符
+    fn detect_prompt(
+        &self,
+        chunk: &str,
+        patterns: &[String],
+        config: &crate::models::PromptConfig,
+    ) -> bool {
+        if !config.smart_detection {
+            // 简单模式：直接检查是否包含任何提示符
+            return patterns.iter().any(|pattern| chunk.contains(pattern));
+        }
+        
+        // 智能模式：检查提示符是否在行尾
+        for pattern in patterns {
+            if chunk.contains(pattern) {
+                // 检查提示符是否在行尾（更准确的检测）
+                let lines: Vec<&str> = chunk.split('\n').collect();
+                if let Some(last_line) = lines.last() {
+                    if last_line.trim_end().ends_with(pattern.trim_end()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        false
     }
 
     /// 认证处理
