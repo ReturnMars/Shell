@@ -1,5 +1,10 @@
 <template>
-  <n-card size="small" class="storage-monitor" :content-style="{ padding: '8px' }" :header-style="{ padding: '8px 8px 4px 8px' }">
+  <n-card
+    size="small"
+    class="storage-monitor"
+    :content-style="{ padding: '8px' }"
+    :header-style="{ padding: '8px 8px 4px 8px' }"
+  >
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
@@ -59,26 +64,14 @@
           <!-- 右侧：类型和性能 -->
           <div class="drive-right">
             <div class="drive-type">
-              <n-tag size="tiny" :type="getStorageTypeTag(storage.type)">
-                {{ storage.type.toUpperCase() }}
-              </n-tag>
-            </div>
-            <div
-              class="drive-performance"
-              v-if="storage.readSpeed || storage.writeSpeed"
-            >
-              <div class="perf-item">
-                <span class="perf-icon">📖</span>
-                <span class="perf-value">{{
-                  storage.readSpeed?.toFixed(0) || 0
-                }}</span>
-              </div>
-              <div class="perf-item">
-                <span class="perf-icon">✏️</span>
-                <span class="perf-value">{{
-                  storage.writeSpeed?.toFixed(0) || 0
-                }}</span>
-              </div>
+              <!-- <n-tag size="tiny" :type="getStorageTypeTag(storage.type)">
+                <span class="text-xs">
+                  {{ storage.type.toUpperCase() }}
+                </span>
+              </n-tag> -->
+              <span :class="getStorageTypeTag(storage.type)">{{
+                storage.type.toUpperCase()
+              }}</span>
             </div>
           </div>
         </div>
@@ -106,7 +99,10 @@ const getStorageIconColor = (type: "ssd" | "hdd") => {
 };
 
 const getStorageTypeTag = (type: "ssd" | "hdd") => {
-  return type === "ssd" ? "info" : "default";
+  const baseClass = "text-10px font-xs";
+  return type === "ssd"
+    ? `${baseClass} text-green-500 `
+    : `${baseClass} text-blue-500`;
 };
 
 const formatBytes = (bytes: number) => {

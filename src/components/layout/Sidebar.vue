@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col mr-1">
     <!-- 侧边栏头部 -->
     <div
       class="border-b border-gray-200 h-[45px] flex items-center justify-start pl-3"
@@ -13,12 +13,12 @@
     </div>
 
     <!-- 连接列表 -->
-    <div class="flex flex-col flex-1 overflow-y-auto p-2">
+    <div class="flex flex-col flex-1 overflow-y-auto">
       <!-- 链接管理区域 -->
-      <div class="mb-4 max-h-[70%] overflow-y-auto relative">
+      <div class="max-h-[50%] overflow-y-auto relative">
         <ConnectionList />
       </div>
-
+      <n-divider class="my-4!" />
       <!-- 硬件监控区域 -->
       <div class="flex-1 overflow-y-auto">
         <HardwareMonitor />

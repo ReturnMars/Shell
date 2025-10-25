@@ -2,7 +2,7 @@
   <div class="hardware-monitor">
     <!-- 标题栏 -->
     <div class="hardware-header" :class="{ scrolled: isScrolled }">
-      <div class="flex items-center gap-2 pb-2">
+      <div class="flex items-center gap-2 p-2">
         <span class="text-medium font-medium text-gray-600 tracking-wider">
           硬件监控
         </span>
@@ -288,6 +288,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 2px;
   min-height: 0; /* 确保可以滚动 */
+  padding: 4px 8px;
 }
 
 .no-connection {

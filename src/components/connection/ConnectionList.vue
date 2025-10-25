@@ -1,10 +1,10 @@
 <template>
   <!-- 连接项列表 -->
-  <div class="flex flex-col">
+  <div class="flex flex-col h-full">
     <!-- 标题栏 -->
     <div
-      class="flex items-center justify-between sticky top-0 pb-2 bg-white z-10 transition-all duration-200"
-      :class="{ 'scrolled': isScrolled }"
+      class="flex items-center justify-between sticky top-0 p-2 bg-white z-10 transition-all duration-200 "
+      :class="{ scrolled: isScrolled }"
     >
       <div>
         <span
@@ -76,95 +76,95 @@
         }"
         @click="selectConnection(connection)"
       >
-      <div class="flex items-center gap-3">
-        <!-- 连接状态指示器 -->
-        <ConnectionStatus
-          :connected="connection.connected"
-          :loading="
-            connectionStore.loading &&
-            connectionStore.currentConnection?.id === connection.id
-          "
-          size="small"
-          statusOnly
-        />
-
-        <!-- 连接信息 -->
-        <div class="flex-1 min-w-0">
-          <div
-            :class="[
-              'connection-name font-medium text-[1rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200',
-              connection.id === connectionStore.currentConnection?.id
-                ? 'text-green-600 font-bold'
-                : 'text-gray-800',
-            ]"
-          >
-            {{ connection.name }}
-          </div>
-          <div
-            class="text-xs text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5"
-          >
-            {{ connection.host }}:{{ connection.port }}
-          </div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div
-          class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-        >
-          <!-- 断开连接按钮 -->
-          <n-button
-            v-if="connection.connected"
-            quaternary
-            size="tiny"
-            type="error"
-            @click="disconnectConnection(connection)"
+        <div class="flex items-center gap-3">
+          <!-- 连接状态指示器 -->
+          <ConnectionStatus
+            :connected="connection.connected"
             :loading="
               connectionStore.loading &&
               connectionStore.currentConnection?.id === connection.id
             "
-          >
-            <template #icon>
-              <n-icon>
-                <DisconnectOutlined />
-              </n-icon>
-            </template>
-          </n-button>
+            size="small"
+            statusOnly
+          />
 
-          <!-- 编辑按钮 -->
-          <ConnectionForm :connection="connection">
-            <template #trigger>
-              <n-button quaternary size="tiny">
-                <template #icon>
-                  <n-icon>
-                    <EditOutlined />
-                  </n-icon>
-                </template>
-              </n-button>
-            </template>
-          </ConnectionForm>
-
-          <!-- 删除按钮 -->
-          <n-popconfirm
-            placement="right"
-            @positive-click="deleteConnection(connection)"
-          >
-            <template #trigger>
-              <n-button quaternary size="tiny">
-                <template #icon>
-                  <n-icon>
-                    <DeleteOutlined />
-                  </n-icon>
-                </template>
-              </n-button>
-            </template>
-            <div class="leading-6">
-              <p>确定要删除链接 "{{ connection.name }}" 吗？</p>
-              <p>删除后将无法恢复!</p>
+          <!-- 连接信息 -->
+          <div class="flex-1 min-w-0">
+            <div
+              :class="[
+                'connection-name font-medium text-[1rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200',
+                connection.id === connectionStore.currentConnection?.id
+                  ? 'text-green-600 font-bold'
+                  : 'text-gray-800',
+              ]"
+            >
+              {{ connection.name }}
             </div>
-          </n-popconfirm>
+            <div
+              class="text-xs text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5"
+            >
+              {{ connection.host }}:{{ connection.port }}
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div
+            class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          >
+            <!-- 断开连接按钮 -->
+            <n-button
+              v-if="connection.connected"
+              quaternary
+              size="tiny"
+              type="error"
+              @click="disconnectConnection(connection)"
+              :loading="
+                connectionStore.loading &&
+                connectionStore.currentConnection?.id === connection.id
+              "
+            >
+              <template #icon>
+                <n-icon>
+                  <DisconnectOutlined />
+                </n-icon>
+              </template>
+            </n-button>
+
+            <!-- 编辑按钮 -->
+            <ConnectionForm :connection="connection">
+              <template #trigger>
+                <n-button quaternary size="tiny">
+                  <template #icon>
+                    <n-icon>
+                      <EditOutlined />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+            </ConnectionForm>
+
+            <!-- 删除按钮 -->
+            <n-popconfirm
+              placement="right"
+              @positive-click="deleteConnection(connection)"
+            >
+              <template #trigger>
+                <n-button quaternary size="tiny">
+                  <template #icon>
+                    <n-icon>
+                      <DeleteOutlined />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              <div class="leading-6">
+                <p>确定要删除链接 "{{ connection.name }}" 吗？</p>
+                <p>删除后将无法恢复!</p>
+              </div>
+            </n-popconfirm>
+          </div>
         </div>
-      </div>
-    </n-card>
+      </n-card>
     </div>
   </div>
 </template>
@@ -193,7 +193,6 @@ const handleScroll = () => {
     isScrolled.value = contentRef.value.scrollTop > 0;
   }
 };
-
 
 // 设置当前选中的链接
 const selectConnection = async (connection: ConnectionConfig) => {
@@ -294,7 +293,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 4px 0;
+  padding: 4px 8px;
 }
 
 .connection-item {
