@@ -43,7 +43,7 @@
               quaternary
               circle
               size="tiny"
-              :loading="loading"
+              :loading="manualLoading"
               @click="handleRefresh"
               :disabled="!isCurrentConnectionConnected"
             >
@@ -192,10 +192,15 @@ const currentConnectionState = computed(
   () => connectionStore.currentConnectionState
 );
 
+// 手动刷新状态
+const manualLoading = ref(false);
+
 // 方法
 const handleRefresh = async () => {
   if (currentConnectionId.value && isCurrentConnectionConnected.value) {
+    manualLoading.value = true;
     await hardwareStore.refreshHardwareInfo(currentConnectionId.value);
+    manualLoading.value = false;
   }
 };
 

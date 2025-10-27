@@ -54,8 +54,10 @@
           <div class="mr-2 flex items-center gap-1 line-height-1">
             <n-time class="line-height-1" :time="timestamp" />
           </div>
-          <div class="text-gray-500 text-xs">
-            <span v-if="isConnected">ID: {{ currentConnection?.id }}</span>
+          <div class="flex items-center text-gray-500 text-xs line-height-1">
+            <span class="line-height-1" v-if="isConnected"
+              >ID: {{ currentConnection?.id }}</span
+            >
           </div>
         </div>
       </div>
