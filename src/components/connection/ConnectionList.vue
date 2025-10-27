@@ -144,24 +144,26 @@
             </ConnectionForm>
 
             <!-- 删除按钮 -->
-            <n-popconfirm
-              placement="right"
-              @positive-click="deleteConnection(connection)"
-            >
-              <template #trigger>
-                <n-button quaternary size="tiny">
-                  <template #icon>
-                    <n-icon>
-                      <DeleteOutlined />
-                    </n-icon>
-                  </template>
-                </n-button>
-              </template>
-              <div class="leading-6">
-                <p>确定要删除链接 "{{ connection.name }}" 吗？</p>
-                <p>删除后将无法恢复!</p>
-              </div>
-            </n-popconfirm>
+            <div @click.stop>
+              <n-popconfirm
+                placement="right"
+                @positive-click="deleteConnection(connection)"
+              >
+                <template #trigger>
+                  <n-button quaternary size="tiny">
+                    <template #icon>
+                      <n-icon>
+                        <DeleteOutlined />
+                      </n-icon>
+                    </template>
+                  </n-button>
+                </template>
+                <div class="leading-6">
+                  <p>确定要删除链接 "{{ connection.name }}" 吗？</p>
+                  <p>删除后将无法恢复!</p>
+                </div>
+              </n-popconfirm>
+            </div>
           </div>
         </div>
       </n-card>

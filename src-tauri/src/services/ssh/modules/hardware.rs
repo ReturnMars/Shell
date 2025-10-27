@@ -180,20 +180,22 @@ impl SshHardwareService {
 
     /// 获取完整的硬件信息
     pub async fn get_hardware_info(&self, connection_id: &str) -> Result<HardwareInfo, String> {
-        let connections = self.connection_manager.connections.read().await;
-
-        if !connections.contains_key(connection_id) {
-            return Err(format!("连接不存在: {}", connection_id));
-        }
-
-        if let Some(conn) = connections.get(connection_id) {
-            if !matches!(conn.status, crate::models::ConnectionStatus::Connected) {
-                return Err(format!("连接状态异常: {:?}", conn.status));
+        // 先检查连接是否存在且已连接
+        {
+            let connections = self.connection_manager.connections.read().await;
+            
+            if !connections.contains_key(connection_id) {
+                return Err(format!("连接不存在: {}", connection_id));
             }
-        }
 
-        drop(connections);
+            if let Some(conn) = connections.get(connection_id) {
+                if !matches!(conn.status, crate::models::ConnectionStatus::Connected) {
+                    return Err(format!("连接状态异常: {:?}", conn.status));
+                }
+            }
+        } // 释放读锁
 
+        // 获取各种硬件信息
         let cpu = self.get_cpu_info(connection_id).await?;
         let memory = self.get_memory_info(connection_id).await?;
         let storage = self.get_storage_info(connection_id).await?;
@@ -212,16 +214,25 @@ impl SshHardwareService {
 
     /// 执行命令的辅助方法
     async fn execute_command(&self, connection_id: &str, command: &str) -> Result<String, String> {
+        // 先检查连接是否存在且已连接
+        {
+            let connections = self.connection_manager.connections.read().await;
+            
+            if !connections.contains_key(connection_id) {
+                return Err("连接不存在".to_string());
+            }
+
+            if let Some(connection) = connections.get(connection_id) {
+                if !matches!(connection.status, crate::models::ConnectionStatus::Connected) {
+                    return Err("连接未建立".to_string());
+                }
+            }
+        } // 释放读锁
+
+        // 获取可变的连接来执行命令
         let mut connections = self.connection_manager.connections.write().await;
 
         if let Some(connection) = connections.get_mut(connection_id) {
-            if !matches!(
-                connection.status,
-                crate::models::ConnectionStatus::Connected
-            ) {
-                return Err("连接未建立".to_string());
-            }
-
             if let Some(ref mut shell_channel) = connection.shell_channel {
                 SshCommandExecutor::execute_command(shell_channel, &connection.config, command)
                     .await

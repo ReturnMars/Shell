@@ -1,7 +1,7 @@
 <template>
   <div>
     <template v-if="'trigger' in $slots">
-      <div class="trigger-button" @click="showModal = true">
+      <div class="trigger-button" @click.stop="showModal = true">
         <slot name="trigger"></slot>
       </div>
     </template>

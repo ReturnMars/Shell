@@ -200,7 +200,7 @@ impl SshDataParser {
 
             storage_list.push(storage_info);
         }
-        log::info!("storage_list: {:?}", storage_list);
+
         Ok(())
     }
 

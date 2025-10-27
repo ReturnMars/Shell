@@ -52,11 +52,26 @@ impl SshConnectionManager {
         let connection_id = config.id.clone();
         log::info!("SSH连接 - 使用连接ID: {}", connection_id);
 
-        // 检查是否已存在连接
+        // 检查是否已存在活动连接
         {
             let connections = self.connections.read().await;
-            if connections.contains_key(&connection_id) {
-                return Err("连接已存在".to_string());
+            if let Some(conn) = connections.get(&connection_id) {
+                if matches!(conn.status, ConnectionStatus::Connected) {
+                    log::warn!("SSH连接 - 连接 {} 已经处于连接状态", connection_id);
+                    return Err("连接已存在".to_string());
+                } else {
+                    log::info!("SSH连接 - 连接 {} 存在但状态为 {:?}，将重新连接", connection_id, conn.status);
+                    // 移除旧的断开状态的连接
+                    drop(connections);
+                    let mut connections = self.connections.write().await;
+                    if let Some(mut old_conn) = connections.remove(&connection_id) {
+                        if let Some(mut shell_channel) = old_conn.shell_channel.take() {
+                            let _ = shell_channel.close();
+                        }
+                        let _ = old_conn.session.disconnect(None, "准备重新连接", None);
+                        log::info!("SSH连接 - 已清除旧连接，准备建立新连接");
+                    }
+                }
             }
         }
 

@@ -21,8 +21,8 @@ export const useConnectionStore = defineStore("connection", () => {
   // 计算属性 - 使用新的状态管理器
   const connectedConnections = computed(() => {
     const connectedStates = connectionStateManager.connectedStates.value;
-    return connections.value.filter(conn => 
-      connectedStates.some(state => state.id === conn.id)
+    return connections.value.filter((conn) =>
+      connectedStates.some((state) => state.id === conn.id)
     );
   });
 
@@ -33,7 +33,9 @@ export const useConnectionStore = defineStore("connection", () => {
   // 当前连接的真实状态
   const currentConnectionState = computed(() => {
     if (!currentConnection.value) return null;
-    return connectionStateManager.getConnectionState(currentConnection.value.id);
+    return connectionStateManager.getConnectionState(
+      currentConnection.value.id
+    );
   });
 
   // 当前连接是否真正连接
@@ -43,15 +45,15 @@ export const useConnectionStore = defineStore("connection", () => {
   });
 
   // 标签页相关计算属性
-  const activeTab = computed(() => 
-    tabs.value.find(tab => tab.id === activeTabId.value) || null
+  const activeTab = computed(
+    () => tabs.value.find((tab) => tab.id === activeTabId.value) || null
   );
   const tabCount = computed(() => tabs.value.length);
   const hasTabs = computed(() => tabs.value.length > 0);
-  
+
   // 获取标签页对应的链接信息
   const getTabConnection = (tab: TabInfo) => {
-    return connections.value.find(conn => conn.id === tab.connection_id);
+    return connections.value.find((conn) => conn.id === tab.connection_id);
   };
 
   // 获取所有保存的链接
@@ -81,10 +83,12 @@ export const useConnectionStore = defineStore("connection", () => {
         const isConnected = connectedIds.has(conn.id);
         connectionStateManager.setConnectionState(conn.id, {
           config: conn,
-          status: isConnected ? ConnectionStatus.CONNECTED : ConnectionStatus.DISCONNECTED,
+          status: isConnected
+            ? ConnectionStatus.CONNECTED
+            : ConnectionStatus.DISCONNECTED,
           lastCheck: Date.now(),
           retryCount: 0,
-          maxRetries: 3
+          maxRetries: 3,
         });
       }
 
@@ -107,16 +111,23 @@ export const useConnectionStore = defineStore("connection", () => {
 
       // 重新加载链接列表
       await fetchConnections();
-      
+
       // 自动选中新保存的链接
-      const savedConnection = connections.value.find(conn => conn.id === config.id);
+      const savedConnection = connections.value.find(
+        (conn) => conn.id === config.id
+      );
       if (savedConnection) {
         currentConnection.value = savedConnection;
         console.log("自动选中新保存的链接:", config.name);
-        
+
         // 自动创建对应的标签页
         try {
-          console.log("开始创建标签页，链接ID:", savedConnection.id, "链接名称:", savedConnection.name);
+          console.log(
+            "开始创建标签页，链接ID:",
+            savedConnection.id,
+            "链接名称:",
+            savedConnection.name
+          );
           console.log("当前标签页数量:", tabs.value.length);
           await addTab(savedConnection);
           console.log("自动创建标签页成功:", config.name);
@@ -126,7 +137,7 @@ export const useConnectionStore = defineStore("connection", () => {
           // 标签页创建失败不影响链接保存
         }
       }
-      
+
       console.log("保存链接成功:", config.name);
     } catch (err) {
       error.value = `保存链接失败: ${err}`;
@@ -156,6 +167,10 @@ export const useConnectionStore = defineStore("connection", () => {
       if (currentConnection.value?.id === connectionId) {
         currentConnection.value = null;
       }
+
+      // 从连接状态管理器中移除
+      connectionStateManager.removeConnectionState(connectionId);
+      console.log("已从连接状态管理器中移除:", connectionId);
 
       console.log("删除链接成功:", connectionId);
     } catch (err) {
@@ -202,7 +217,9 @@ export const useConnectionStore = defineStore("connection", () => {
     if (connection && connection.connected !== true) {
       try {
         loading.value = true;
-        console.log(`连接Store - 链接 ${connection.name} 未连接，正在自动连接...`);
+        console.log(
+          `连接Store - 链接 ${connection.name} 未连接，正在自动连接...`
+        );
         const result = await connect(connection);
         if (result.success) {
           console.log(`连接Store - 自动连接成功: ${connection.name}`);
@@ -322,10 +339,13 @@ export const useConnectionStore = defineStore("connection", () => {
     try {
       loading.value = true;
       error.value = null;
-      
+
       // 更新状态为连接中
-      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.CONNECTING);
-      
+      connectionStateManager.updateConnectionStatus(
+        config.id,
+        ConnectionStatus.CONNECTING
+      );
+
       const connectionId = (await invoke("connect_ssh", { config })) as string;
 
       // 更新连接状态 - 使用新的状态管理器
@@ -335,7 +355,7 @@ export const useConnectionStore = defineStore("connection", () => {
       if (index > -1) {
         connections.value[index].connected = true;
         console.log("连接Store - 更新连接状态为已连接:", config.id);
-        
+
         // 如果这是当前连接，也要更新currentConnection
         if (currentConnection.value?.id === config.id) {
           currentConnection.value.connected = true;
@@ -344,7 +364,10 @@ export const useConnectionStore = defineStore("connection", () => {
       }
 
       // 更新状态管理器
-      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.CONNECTED);
+      connectionStateManager.updateConnectionStatus(
+        config.id,
+        ConnectionStatus.CONNECTED
+      );
 
       console.log("连接建立成功:", connectionId);
       return {
@@ -355,10 +378,14 @@ export const useConnectionStore = defineStore("connection", () => {
     } catch (err) {
       const errorMsg = `连接建立失败: ${err}`;
       console.error("连接建立失败:", err);
-      
+
       // 更新状态管理器为错误状态
-      connectionStateManager.updateConnectionStatus(config.id, ConnectionStatus.ERROR, errorMsg);
-      
+      connectionStateManager.updateConnectionStatus(
+        config.id,
+        ConnectionStatus.ERROR,
+        errorMsg
+      );
+
       return {
         success: false,
         message: errorMsg,
@@ -373,10 +400,13 @@ export const useConnectionStore = defineStore("connection", () => {
     try {
       loading.value = true;
       error.value = null;
-      
+
       // 更新状态为断开中
-      connectionStateManager.updateConnectionStatus(connectionId, ConnectionStatus.DISCONNECTED);
-      
+      connectionStateManager.updateConnectionStatus(
+        connectionId,
+        ConnectionStatus.DISCONNECTED
+      );
+
       await invoke("disconnect_ssh", { connectionId });
 
       // 更新连接状态
@@ -387,9 +417,15 @@ export const useConnectionStore = defineStore("connection", () => {
         connections.value[index].connected = false;
       }
 
-      // 如果断开的是当前连接，清空当前连接
+      // 如果断开的是当前连接，清空当前连接并清除硬件信息
       if (currentConnection.value?.id === connectionId) {
         currentConnection.value.connected = false;
+
+        // 清除硬件信息和停止自动刷新
+        const { useHardwareStore } = await import("../hardware");
+        const hardwareStore = useHardwareStore();
+        hardwareStore.clearHardwareInfo();
+        console.log("连接Store - 已清除硬件信息并停止自动刷新");
       }
 
       console.log("断开连接成功:", connectionId);
@@ -446,13 +482,13 @@ export const useConnectionStore = defineStore("connection", () => {
 
   // 初始化状态管理器
   const initializeStateManager = () => {
-    console.log('连接Store - 初始化状态管理器');
+    console.log("连接Store - 初始化状态管理器");
     connectionStateManager.startHealthCheck();
   };
 
   // 清理状态管理器
   const cleanupStateManager = () => {
-    console.log('连接Store - 清理状态管理器');
+    console.log("连接Store - 清理状态管理器");
     connectionStateManager.cleanup();
   };
 
@@ -479,11 +515,11 @@ export const useConnectionStore = defineStore("connection", () => {
       error.value = null;
       const result = (await invoke("get_tabs_list")) as TabInfo[];
       tabs.value = result;
-      
+
       // 设置活动标签页ID
-      const activeTab = result.find(tab => tab.active);
+      const activeTab = result.find((tab) => tab.active);
       activeTabId.value = activeTab?.id || null;
-      
+
       console.log("加载标签页成功:", result.length, "个标签页");
     } catch (err) {
       error.value = `加载标签页失败: ${err}`;
@@ -498,27 +534,30 @@ export const useConnectionStore = defineStore("connection", () => {
     try {
       loading.value = true;
       error.value = null;
-      console.log("调用 add_tab 命令，参数:", { connectionId: connection.id, title: connection.name });
+      console.log("调用 add_tab 命令，参数:", {
+        connectionId: connection.id,
+        title: connection.name,
+      });
       const tabId = (await invoke("add_tab", {
         connectionId: connection.id,
         title: connection.name,
       })) as string;
-      
+
       console.log("add_tab 命令返回的 tabId:", tabId);
-      
+
       // 重新加载标签页列表
       await fetchTabs();
-      
+
       // 确保新创建的标签页被设置为活动状态
       activeTabId.value = tabId;
       console.log("设置活动标签页ID:", tabId);
-      
+
       // 更新本地标签页状态
-      tabs.value.forEach(tab => {
+      tabs.value.forEach((tab) => {
         tab.active = tab.id === tabId;
       });
       console.log("更新本地标签页活动状态");
-      
+
       console.log("添加标签页成功:", connection.name);
     } catch (err) {
       error.value = `添加标签页失败: ${err}`;
@@ -535,7 +574,7 @@ export const useConnectionStore = defineStore("connection", () => {
       loading.value = true;
       error.value = null;
       await invoke("remove_tab", { tabId });
-      
+
       // 重新加载标签页列表
       await fetchTabs();
       console.log("删除标签页成功:", tabId);
@@ -554,13 +593,13 @@ export const useConnectionStore = defineStore("connection", () => {
       loading.value = true;
       error.value = null;
       await invoke("set_active_tab", { tabId });
-      
+
       // 更新本地状态
       activeTabId.value = tabId;
-      tabs.value.forEach(tab => {
+      tabs.value.forEach((tab) => {
         tab.active = tab.id === tabId;
       });
-      
+
       console.log("设置活动标签页:", tabId);
     } catch (err) {
       error.value = `设置活动标签页失败: ${err}`;
@@ -577,7 +616,7 @@ export const useConnectionStore = defineStore("connection", () => {
       loading.value = true;
       error.value = null;
       await invoke("close_all_tabs");
-      
+
       tabs.value = [];
       activeTabId.value = null;
       console.log("关闭所有标签页成功");
@@ -596,7 +635,7 @@ export const useConnectionStore = defineStore("connection", () => {
       loading.value = true;
       error.value = null;
       await invoke("close_other_tabs", { keepTabId });
-      
+
       // 重新加载标签页列表
       await fetchTabs();
       console.log("关闭其他标签页成功，保留:", keepTabId);
@@ -655,7 +694,7 @@ export const useConnectionStore = defineStore("connection", () => {
     disconnectAll,
     executeCommand,
     generateUuid,
-    
+
     // 标签页方法
     fetchTabs,
     addTab,
@@ -664,12 +703,12 @@ export const useConnectionStore = defineStore("connection", () => {
     closeAllTabs,
     closeOtherTabs,
     getTabConnection,
-    
+
     // 状态管理器方法
     initializeStateManager,
     cleanupStateManager,
     connectionStateManager,
-    
+
     reset,
   };
 });
