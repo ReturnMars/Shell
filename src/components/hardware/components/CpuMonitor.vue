@@ -36,7 +36,11 @@
       <div class="cpu-details">
         <div class="detail-item">
           <span class="detail-label">型号:</span>
-          <span class="detail-value">{{ cpuInfo?.model || "未知" }}</span>
+          <span class="detail-value">
+            <n-ellipsis :line-clamp="1">{{
+              cpuInfo?.model || "未知"
+            }}</n-ellipsis>
+          </span>
         </div>
         <div class="detail-item">
           <span class="detail-label">核心数:</span>
@@ -120,17 +124,21 @@ const formatFrequency = (frequency: number) => {
   justify-content: space-between;
   align-items: center;
   font-size: 10px;
-  padding: 1px 0;
+  padding: 4px 0;
 }
 
 .detail-label {
   color: #666;
   font-weight: 500;
+  line-height: 1;
 }
 
 .detail-value {
+  flex: 1;
   color: #333;
   font-weight: 600;
+  line-height: 50%;
+  text-align: right;
 }
 
 .text-red-500 {

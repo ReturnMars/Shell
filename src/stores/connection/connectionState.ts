@@ -146,16 +146,13 @@ class ConnectionStateManager {
           const isHealthy = await this.checkConnectionHealth(connectionId);
           if (!isHealthy) {
             console.warn(`连接 ${connectionId} 健康检查失败`);
-
-            // 尝试自动重连
-            if (state.retryCount < state.maxRetries) {
-              console.log(`连接 ${connectionId} 尝试自动重连`);
-              await this.autoReconnect(connectionId);
-            } else {
-              console.error(
-                `连接 ${connectionId} 已达到最大重试次数，停止重连`
-              );
-            }
+            // 只更新状态为断开，不自动重连
+            // 因为用户可能已经手动断开了连接，自动重连会干扰用户的操作
+            this.updateConnectionStatus(
+              connectionId,
+              ConnectionStatus.DISCONNECTED,
+              "连接已断开"
+            );
           }
         }
       }

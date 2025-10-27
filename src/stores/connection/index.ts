@@ -214,6 +214,7 @@ export const useConnectionStore = defineStore("connection", () => {
     console.log("连接Store - 当前连接已设置:", currentConnection.value);
 
     // 如果选中了链接且未连接，则自动连接
+    // 注意：只有在明确选择连接时才自动连接，不要在没有用户操作时自动连接
     if (connection && connection.connected !== true) {
       try {
         loading.value = true;
@@ -420,6 +421,9 @@ export const useConnectionStore = defineStore("connection", () => {
       // 如果断开的是当前连接，清空当前连接并清除硬件信息
       if (currentConnection.value?.id === connectionId) {
         currentConnection.value.connected = false;
+        // 清空当前连接，防止自动重连
+        currentConnection.value = null;
+        console.log("连接Store - 已清空当前连接");
 
         // 清除硬件信息和停止自动刷新
         const { useHardwareStore } = await import("../hardware");
@@ -449,6 +453,16 @@ export const useConnectionStore = defineStore("connection", () => {
       connections.value.forEach((conn) => {
         conn.connected = false;
       });
+
+      // 清空当前连接
+      currentConnection.value = null;
+      console.log("连接Store - 已清空当前连接");
+
+      // 清除硬件信息和停止自动刷新
+      const { useHardwareStore } = await import("../hardware");
+      const hardwareStore = useHardwareStore();
+      hardwareStore.clearHardwareInfo();
+      console.log("连接Store - 已清除硬件信息并停止自动刷新");
 
       console.log("断开所有连接成功");
     } catch (err) {

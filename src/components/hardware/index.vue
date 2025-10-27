@@ -283,14 +283,16 @@ watch(currentConnectionState, (newState, oldState) => {
       hardwareStore.stopAutoRefresh();
     }
 
-    // 如果连接状态变为连接中，且之前不是连接状态，尝试获取硬件信息
-    if (newState.status === "connected" && oldState.status !== "connected") {
-      console.log("硬件监控 - 连接状态恢复，重新获取硬件信息");
-      if (currentConnectionId.value) {
-        hardwareStore.fetchHardwareInfo(currentConnectionId.value);
-        hardwareStore.startAutoRefresh(currentConnectionId.value);
-      }
-    }
+    // 注意：不在这里自动重连
+    // 只有在用户明确选择连接时才获取硬件信息
+    // 这样可以避免断开连接后自动重连的问题
+    // if (newState.status === "connected" && oldState.status !== "connected") {
+    //   console.log("硬件监控 - 连接状态恢复，重新获取硬件信息");
+    //   if (currentConnectionId.value) {
+    //     hardwareStore.fetchHardwareInfo(currentConnectionId.value);
+    //     hardwareStore.startAutoRefresh(currentConnectionId.value);
+    //   }
+    // }
   }
 });
 

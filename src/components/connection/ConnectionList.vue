@@ -255,6 +255,7 @@ const disconnectConnection = async (connection: ConnectionConfig) => {
 const disconnectAll = async () => {
   try {
     await connectionStore.disconnectAll();
+
     message.success("已断开所有连接");
   } catch (error) {
     console.error("断开所有连接失败:", error);
