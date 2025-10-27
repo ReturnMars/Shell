@@ -161,6 +161,34 @@ import MemoryMonitor from "./components/MemoryMonitor.vue";
 import StorageMonitor from "./components/StorageMonitor.vue";
 import NetworkMonitor from "./components/NetworkMonitor.vue";
 
+/**
+ * 硬件监控主组件
+ * 
+ * 硬件信息数据说明：
+ * 1. CPU: 
+ *    - usage: 百分比 (0-100)
+ *    - frequency: MHz（兆赫兹）
+ *    - temperature: 摄氏度
+ * 
+ * 2. Memory（内存）:
+ *    - total/used/free: MB
+ *    - swap.total/used/free: MB
+ * 
+ * 3. Storage（存储）:
+ *    - total/used/free: MB
+ * 
+ * 4. Network（网络）:
+ *    - total_rx/total_tx: bytes（字节）
+ *    - rx_speed/tx_speed: bytes/s（字节每秒）
+ *    - interface.rx/tx: bytes（字节）
+ *    - interface.rx_speed/tx_speed: bytes/s（字节每秒）
+ * 
+ * 格式化函数说明：
+ * - formatFromMB(): 用于内存和存储，输入MB，自动格式化为MB/GB/TB
+ * - formatFromBytes(): 用于网络流量和速度，输入bytes，自动格式化为B/KB/MB/GB
+ * - formatFrequency(): 用于CPU频率，输入MHz，自动格式化为MHz/GHz
+ */
+
 const hardwareStore = useHardwareStore();
 const connectionStore = useConnectionStore();
 

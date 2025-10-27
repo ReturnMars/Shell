@@ -44,9 +44,9 @@
               </div>
             </div>
             <div class="drive-capacity">
-              <span class="capacity-used">{{ formatMB(storage.used) }}</span>
+              <span class="capacity-used">{{ formatFromMB(storage.used) }}</span>
               <span class="capacity-separator">/</span>
-              <span class="capacity-total">{{ formatMB(storage.total) }}</span>
+              <span class="capacity-total">{{ formatFromMB(storage.total) }}</span>
             </div>
           </div>
 
@@ -72,7 +72,18 @@
 <script setup lang="ts">
 import { HddOutlined, CloudServerOutlined } from "@vicons/antd";
 import type { StorageInfo } from "../types";
-import { formatMB } from "@/utils/format";
+import { formatFromMB } from "@/utils/format";
+
+/**
+ * 存储监控组件
+ * 
+ * 数据单位说明（后端返回）：
+ * - total/used/free: MB（兆字节），使用 formatFromMB() 格式化
+ * - usage: 百分比（0-100）
+ * - type: "ssd" | "hdd"
+ * 
+ * formatFromMB() 函数会自动转换为合适的单位显示（MB/GB/TB等）
+ */
 
 interface Props {
   storageList: StorageInfo[];

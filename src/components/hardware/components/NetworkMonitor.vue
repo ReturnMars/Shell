@@ -25,25 +25,25 @@
         <div class="overview-item">
           <div class="overview-label">接收速度</div>
           <div class="overview-value">
-            {{ `${formatBytes(networkInfo.rx_speed)} /s` }}
+            {{ `${formatFromBytes(networkInfo.rx_speed)} /s` }}
           </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">发送速度</div>
           <div class="overview-value">
-            {{ `${formatBytes(networkInfo.tx_speed)} /s` }}
+            {{ `${formatFromBytes(networkInfo.tx_speed)} /s` }}
           </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">总接收</div>
           <div class="overview-value">
-            {{ formatBytes(networkInfo.total_rx) }}
+            {{ formatFromBytes(networkInfo.total_rx) }}
           </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">总发送</div>
           <div class="overview-value">
-            {{ formatBytes(networkInfo.total_tx) }}
+            {{ formatFromBytes(networkInfo.total_tx) }}
           </div>
         </div>
       </div>
@@ -74,16 +74,16 @@
           <div class="interface-stats">
             <div class="stat-item">
               <span class="stat-label">接收:</span>
-              <span class="stat-value">{{ formatBytes(iface.rx) }}</span>
+              <span class="stat-value">{{ formatFromBytes(iface.rx) }}</span>
               <span class="stat-speed"
-                >{{ formatBytes(iface.rx_speed) }} /s</span
+                >{{ formatFromBytes(iface.rx_speed) }} /s</span
               >
             </div>
             <div class="stat-item">
               <span class="stat-label">发送:</span>
-              <span class="stat-value">{{ formatBytes(iface.tx) }}</span>
+              <span class="stat-value">{{ formatFromBytes(iface.tx) }}</span>
               <span class="stat-speed"
-                >{{ formatBytes(iface.tx_speed) }} /s</span
+                >{{ formatFromBytes(iface.tx_speed) }} /s</span
               >
             </div>
           </div>
@@ -96,7 +96,19 @@
 <script setup lang="ts">
 import { WifiOutlined, DisconnectOutlined } from "@vicons/antd";
 import type { NetworkInfo } from "../types";
-import { formatBytes, formatMB } from "@/utils/format";
+import { formatFromBytes } from "@/utils/format";
+
+/**
+ * 网络监控组件
+ * 
+ * 数据单位说明（后端返回）：
+ * - networkInfo.total_rx/total_tx: bytes（字节数），累计接收/发送的总字节数，使用 formatFromBytes() 格式化
+ * - networkInfo.rx_speed/tx_speed: bytes/s（字节/秒），总接收/发送速度，使用 formatFromBytes() 格式化
+ * - interface.rx/tx: bytes（字节数），接口累计接收/发送的字节数，使用 formatFromBytes() 格式化
+ * - interface.rx_speed/tx_speed: bytes/s（字节/秒），接口接收/发送速度，使用 formatFromBytes() 格式化
+ * 
+ * formatFromBytes() 函数会自动转换为合适的单位显示（B/KB/MB/GB等）
+ */
 
 interface Props {
   networkInfo: NetworkInfo;

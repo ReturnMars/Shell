@@ -56,21 +56,21 @@ export const formatValue = (
 };
 
 /**
- * 格式化字节数为可读的字符串
- * @param bytes 字节数
+ * 从字节(B)格式化，自动转换为合适的单位
+ * @param value 字节数
  * @returns 格式化后的字符串，如 "1.2 GB", "512 MB", "256 KB"
  */
-export const formatBytes = (bytes: number): string => {
-  return formatValue(bytes, "B", 1);
+export const formatFromBytes = (value: number): string => {
+  return formatValue(value, "B", 1);
 };
 
 /**
- * 格式化MB数为可读的字符串
- * @param mb MB数
+ * 从兆字节(MB)格式化，自动转换为合适的单位
+ * @param value MB数
  * @returns 格式化后的字符串，如 "1.2 GB", "512 MB"
  */
-export const formatMB = (mb: number): string => {
-  return formatValue(mb, "MB", 2);
+export const formatFromMB = (value: number): string => {
+  return formatValue(value, "MB", 2);
 };
 
 /**
@@ -82,11 +82,9 @@ export const formatSwapUsage = (swap: any): string => {
   if (!swap || swap.total === 0) return "0MB/0MB";
 
   const used = Math.round(swap.used);
-  const total = Math.round(swap.total);
 
   // 交换分区优先显示MB格式，除非超过1GB才显示GB
   const usedStr = used >= 1024 ? formatValue(used, "MB", 1) : `${used}MB`;
-  const totalStr = total >= 1024 ? formatValue(total, "MB", 1) : `${total}MB`;
   const usage = swap.usage?.toFixed(2) ?? 0;
   return `${usedStr} / ${usage}%`;
 };

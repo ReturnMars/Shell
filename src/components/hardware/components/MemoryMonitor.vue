@@ -38,19 +38,19 @@
           <div class="detail-item">
             <span class="detail-label">总容量:</span>
             <span class="detail-value">{{
-              formatMB(memoryInfo?.total || 0)
+              formatFromMB(memoryInfo?.total || 0)
             }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">已使用:</span>
             <span class="detail-value text-orange-500">{{
-              formatMB(memoryInfo?.used || 0)
+              formatFromMB(memoryInfo?.used || 0)
             }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">空闲:</span>
             <span class="detail-value text-green-500">{{
-              formatMB(memoryInfo?.free || 0)
+              formatFromMB(memoryInfo?.free || 0)
             }}</span>
           </div>
         </div>
@@ -61,7 +61,7 @@
             <span class="swap-title">交换分区</span>
 
             <span class="swap-usage">{{
-              formatMB(memoryInfo.swap.total)
+              formatFromMB(memoryInfo.swap.total)
             }}</span>
           </div>
           <div class="swap-header">
@@ -80,7 +80,18 @@
 import { DatabaseOutlined } from "@vicons/antd";
 import RingChart from "./charts/RingChart.vue";
 import type { MemoryInfo } from "../types";
-import { formatMB, formatSwapUsage } from "@/utils/format";
+import { formatFromMB, formatSwapUsage } from "@/utils/format";
+
+/**
+ * 内存监控组件
+ * 
+ * 数据单位说明（后端返回）：
+ * - total/used/free: MB（兆字节），使用 formatFromMB() 格式化
+ * - swap.total/used/free: MB（兆字节），使用 formatFromMB() 格式化
+ * - usage: 百分比（0-100）
+ * 
+ * formatFromMB() 函数会自动转换为合适的单位显示（MB/GB/TB等）
+ */
 
 interface Props {
   memoryInfo?: MemoryInfo | null;

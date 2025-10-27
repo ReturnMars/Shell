@@ -71,11 +71,22 @@ import { DesktopOutlined } from "@vicons/antd";
 import RingChart from "./charts/RingChart.vue";
 import type { CpuInfo } from "../types";
 
+/**
+ * CPU监控组件
+ * 
+ * 数据单位说明（后端返回）：
+ * - model: String（CPU型号）
+ * - cores: Number（核心数）
+ * - usage: 百分比（0-100，CPU使用率）
+ * - frequency: MHz（兆赫兹，使用 formatFrequency() 格式化显示）
+ * - temperature: 摄氏度（使用 getTemperatureClass() 根据温度显示不同颜色）
+ */
+
 interface Props {
   cpuInfo?: CpuInfo | null;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const getCpuStatusType = (usage: number) => {
   if (usage >= 90) return "error";
