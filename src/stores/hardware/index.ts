@@ -1,20 +1,37 @@
 // 硬件信息状态管理
-import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import type { 
-  HardwareInfo
-} from '@/components/hardware/types';
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import type { HardwareInfo } from "@/components/hardware/types";
 
-export const useHardwareStore = defineStore('hardware', () => {
-  // 状态
-  const hardwareInfo = ref<HardwareInfo | null>(null);
+export const useHardwareStore = defineStore("hardware", () => {
+  // 硬件信息池 - 每个连接ID对应一个硬件信息
+  const hardwareInfoPool = ref<Map<string, HardwareInfo>>(new Map());
+  // 当前连接ID
+  const currentConnectionId = ref<string | null>(null);
+  // 加载状态
   const loading = ref(false);
+  // 错误信息
   const error = ref<string | null>(null);
-  const lastUpdate = ref<number | null>(null);
+  // 最后更新时间池
+  const lastUpdatePool = ref<Map<string, number>>(new Map());
+  // 自动刷新
   const autoRefresh = ref(true);
   const refreshInterval = ref(5000); // 5秒刷新一次
-  const refreshTimer = ref<NodeJS.Timeout | null>(null);
+  // 每个连接的定时器池
+  const refreshTimers = ref<Map<string, NodeJS.Timeout>>(new Map());
+
+  // 当前连接的硬件信息
+  const hardwareInfo = computed(() => {
+    if (!currentConnectionId.value) return null;
+    return hardwareInfoPool.value.get(currentConnectionId.value) || null;
+  });
+
+  // 当前连接的最后更新时间
+  const lastUpdate = computed(() => {
+    if (!currentConnectionId.value) return null;
+    return lastUpdatePool.value.get(currentConnectionId.value) || null;
+  });
 
   // 计算属性
   const isConnected = computed(() => hardwareInfo.value !== null);
@@ -22,7 +39,7 @@ export const useHardwareStore = defineStore('hardware', () => {
   const memoryUsage = computed(() => hardwareInfo.value?.memory.usage || 0);
   const storageUsage = computed(() => {
     if (!hardwareInfo.value?.storage) return [];
-    return hardwareInfo.value.storage.map(storage => ({
+    return hardwareInfo.value.storage.map((storage) => ({
       device: storage.device,
       mount_point: storage.mount_point,
       filesystem: storage.filesystem,
@@ -30,78 +47,92 @@ export const useHardwareStore = defineStore('hardware', () => {
       total: storage.total,
       used: storage.used,
       free: storage.free,
-      type: storage.type
+      type: storage.type,
     }));
   });
 
+  // 设置当前连接ID
+  const setCurrentConnectionId = (connectionId: string | null) => {
+    currentConnectionId.value = connectionId;
+  };
+
+  // 从池中移除连接的数据
+  const removeConnectionData = (connectionId: string) => {
+    hardwareInfoPool.value.delete(connectionId);
+    lastUpdatePool.value.delete(connectionId);
+  };
+
   // 获取硬件信息
-  const fetchHardwareInfo = async (connectionId?: string) => {
-    console.log('硬件Store - fetchHardwareInfo 被调用:', connectionId);
-    
+  const fetchHardwareInfo = async (targetConnectionId?: string) => {
+    const connectionId = targetConnectionId || currentConnectionId.value;
+
     if (!connectionId) {
-      error.value = '未指定连接ID';
-      console.log('硬件Store - 错误: 未指定连接ID');
+      error.value = "未指定连接ID";
       return;
     }
 
-    // 在获取硬件信息前先检查连接状态
+    // 检查连接状态
     try {
-      const isConnected = await invoke<boolean>('check_connection_status', { connectionId });
+      const isConnected = await invoke<boolean>("check_connection_status", {
+        connectionId,
+      });
       if (!isConnected) {
-        console.log('硬件Store - 连接不存在，停止获取硬件信息');
-        hardwareInfo.value = null;
-        lastUpdate.value = null;
-        error.value = '连接不存在';
+        removeConnectionData(connectionId);
+        if (connectionId === currentConnectionId.value) {
+          error.value = "连接不存在";
+        }
         return;
       }
     } catch (checkError) {
-      console.warn('硬件Store - 检查连接状态失败:', checkError);
-      // 如果检查失败，继续尝试获取硬件信息
+      console.warn("硬件Store - 检查连接状态失败:", checkError);
     }
 
-    loading.value = true;
-    error.value = null;
+    // 设置loading状态（只影响当前连接）
+    const isCurrentConnection = connectionId === currentConnectionId.value;
+    if (isCurrentConnection) {
+      loading.value = true;
+      error.value = null;
+    }
 
     try {
-      console.log('硬件Store - 调用 Tauri API get_hardware_info:', connectionId);
-      // 调用 Tauri 命令获取真实硬件信息
-      const data = await invoke<HardwareInfo>('get_hardware_info', {
-        connectionId
+      const data = await invoke<HardwareInfo>("get_hardware_info", {
+        connectionId,
       });
-      console.log("🚀 ~ fetchHardwareInfo ~ data:", data)
-      
-      console.log('硬件Store - 获取到硬件信息:', data);
-      hardwareInfo.value = data;
-      lastUpdate.value = Date.now();
-      
-      // 清除之前的错误
-      error.value = null;
+
+      // 存储到硬件信息池中
+      hardwareInfoPool.value.set(connectionId, data);
+      lastUpdatePool.value.set(connectionId, Date.now());
+
+      if (isCurrentConnection) {
+        error.value = null;
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '获取硬件信息失败';
-      error.value = errorMessage;
-      console.error('硬件Store - 获取硬件信息失败:', err);
-      
-      // 检查是否是连接不存在的错误
-      if (err instanceof Error && err.message.includes('连接不存在')) {
-        console.log('硬件Store - 检测到连接不存在，清除硬件信息');
-        // 连接不存在时，清除硬件信息，不显示任何数据
-        hardwareInfo.value = null;
-        lastUpdate.value = null;
+      const errorMessage =
+        err instanceof Error ? err.message : "获取硬件信息失败";
+      console.error("硬件Store - 获取硬件信息失败:", connectionId, err);
+
+      // 处理连接不存在错误
+      if (err instanceof Error && err.message.includes("连接不存在")) {
+        removeConnectionData(connectionId);
+        if (isCurrentConnection) {
+          error.value = "连接不存在";
+        }
         return;
       }
-      
-      // 对于其他错误，尝试错误恢复
-      console.log('硬件Store - 尝试错误恢复机制');
+
+      if (isCurrentConnection) {
+        error.value = errorMessage;
+      }
+
+      // 尝试错误恢复
       const recoverySuccess = await retryWithBackoff(connectionId);
-      
       if (!recoverySuccess) {
-        // 如果恢复失败，清除硬件信息
-        console.log('硬件Store - 恢复失败，清除硬件信息');
-        hardwareInfo.value = null;
-        lastUpdate.value = null;
+        removeConnectionData(connectionId);
       }
     } finally {
-      loading.value = false;
+      if (isCurrentConnection) {
+        loading.value = false;
+      }
     }
   };
 
@@ -111,35 +142,70 @@ export const useHardwareStore = defineStore('hardware', () => {
   };
 
   // 开始自动刷新
-  const startAutoRefresh = (connectionId?: string) => {
-    if (refreshTimer.value) {
-      clearInterval(refreshTimer.value);
+  const startAutoRefresh = (targetConnectionId?: string) => {
+    const connectionId = targetConnectionId || currentConnectionId.value;
+
+    if (!connectionId) {
+      console.warn("硬件Store - 无法启动自动刷新：未指定连接ID");
+      return;
     }
-    
-    if (autoRefresh.value && connectionId) {
-      refreshTimer.value = setInterval(async () => {
+
+    // 如果该连接已有定时器，先清除
+    const existingTimer = refreshTimers.value.get(connectionId);
+    if (existingTimer) {
+      clearInterval(existingTimer);
+    }
+
+    if (autoRefresh.value) {
+      const timer = setInterval(async () => {
         // 在自动刷新前检查连接状态
         try {
-          const isConnected = await invoke<boolean>('check_connection_status', { connectionId });
+          const isConnected = await invoke<boolean>("check_connection_status", {
+            connectionId,
+          });
           if (isConnected) {
             await fetchHardwareInfo(connectionId);
           } else {
-            console.log('硬件Store - 自动刷新时检测到连接不存在，停止自动刷新');
-            stopAutoRefresh();
+            console.log(
+              "硬件Store - 自动刷新时检测到连接不存在，停止自动刷新:",
+              connectionId
+            );
+            stopAutoRefresh(connectionId);
           }
         } catch (error) {
-          console.warn('硬件Store - 自动刷新时检查连接状态失败:', error);
-          stopAutoRefresh();
+          console.warn(
+            "硬件Store - 自动刷新时检查连接状态失败:",
+            connectionId,
+            error
+          );
+          stopAutoRefresh(connectionId);
         }
       }, refreshInterval.value);
+
+      refreshTimers.value.set(connectionId, timer);
+      console.log("硬件Store - 启动自动刷新:", connectionId);
     }
   };
 
   // 停止自动刷新
-  const stopAutoRefresh = () => {
-    if (refreshTimer.value) {
-      clearInterval(refreshTimer.value);
-      refreshTimer.value = null;
+  const stopAutoRefresh = (targetConnectionId?: string) => {
+    const connectionId = targetConnectionId || currentConnectionId.value;
+
+    if (connectionId) {
+      // 停止特定连接的定时器
+      const timer = refreshTimers.value.get(connectionId);
+      if (timer) {
+        clearInterval(timer);
+        refreshTimers.value.delete(connectionId);
+        console.log("硬件Store - 停止自动刷新:", connectionId);
+      }
+    } else {
+      // 停止所有定时器
+      refreshTimers.value.forEach((timer, connId) => {
+        clearInterval(timer);
+        console.log("硬件Store - 停止自动刷新:", connId);
+      });
+      refreshTimers.value.clear();
     }
   };
 
@@ -157,53 +223,89 @@ export const useHardwareStore = defineStore('hardware', () => {
   // 设置刷新间隔
   const setRefreshInterval = (interval: number) => {
     refreshInterval.value = interval;
-    if (autoRefresh.value && refreshTimer.value) {
+    // 如果有正在运行的定时器，需要重新启动所有定时器
+    if (autoRefresh.value && refreshTimers.value.size > 0) {
+      // 保存所有连接ID
+      const connectionIds = Array.from(refreshTimers.value.keys());
+      // 停止所有定时器
       stopAutoRefresh();
-      // 需要重新启动自动刷新
+      // 为所有连接重新启动定时器
+      connectionIds.forEach((connId) => {
+        startAutoRefresh(connId);
+      });
     }
   };
 
   // 错误恢复机制
-  const retryWithBackoff = async (connectionId: string, maxRetries: number = 3) => {
+  const retryWithBackoff = async (
+    connectionId: string,
+    maxRetries: number = 3
+  ) => {
     let retryCount = 0;
     let delay = 1000; // 1秒
-    
+
     while (retryCount < maxRetries) {
       try {
-        console.log(`硬件Store - 重试获取硬件信息 (${retryCount + 1}/${maxRetries}):`, connectionId);
-        const data = await invoke<HardwareInfo>('get_hardware_info', {
+        console.log(
+          `硬件Store - 重试获取硬件信息 (${retryCount + 1}/${maxRetries}):`,
           connectionId
+        );
+        const data = await invoke<HardwareInfo>("get_hardware_info", {
+          connectionId,
         });
-        
-        console.log('硬件Store - 重试成功，获取到硬件信息:', data);
-        hardwareInfo.value = data;
-        lastUpdate.value = Date.now();
-        error.value = null;
+
+        console.log(
+          "硬件Store - 重试成功，获取到硬件信息:",
+          connectionId,
+          data
+        );
+
+        // 存储到硬件信息池中
+        hardwareInfoPool.value.set(connectionId, data);
+        lastUpdatePool.value.set(connectionId, Date.now());
+
+        if (connectionId === currentConnectionId.value) {
+          error.value = null;
+        }
         return true;
       } catch (err) {
         retryCount++;
         console.warn(`硬件Store - 重试 ${retryCount} 失败:`, err);
-        
+
         if (retryCount < maxRetries) {
           console.log(`硬件Store - 等待 ${delay}ms 后重试`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           delay *= 2; // 指数退避
         }
       }
     }
-    
-    console.error('硬件Store - 重试失败，清除硬件信息');
-    hardwareInfo.value = null;
-    lastUpdate.value = null;
+
+    console.error("硬件Store - 重试失败，清除硬件信息:", connectionId);
+    hardwareInfoPool.value.delete(connectionId);
+    lastUpdatePool.value.delete(connectionId);
     return false;
   };
 
   // 清除硬件信息
-  const clearHardwareInfo = () => {
-    hardwareInfo.value = null;
-    lastUpdate.value = null;
-    error.value = null;
-    stopAutoRefresh();
+  const clearHardwareInfo = (targetConnectionId?: string) => {
+    const connectionId = targetConnectionId || currentConnectionId.value;
+
+    if (connectionId) {
+      // 清除特定连接的硬件信息
+      removeConnectionData(connectionId);
+      stopAutoRefresh(connectionId);
+
+      if (connectionId === currentConnectionId.value) {
+        error.value = null;
+      }
+    } else {
+      // 清除所有硬件信息
+      hardwareInfoPool.value.clear();
+      lastUpdatePool.value.clear();
+      currentConnectionId.value = null;
+      error.value = null;
+      stopAutoRefresh();
+    }
   };
 
   // 清理函数
@@ -219,14 +321,15 @@ export const useHardwareStore = defineStore('hardware', () => {
     lastUpdate,
     autoRefresh,
     refreshInterval,
-    
+
     // 计算属性
     isConnected,
     cpuUsage,
     memoryUsage,
     storageUsage,
-    
+
     // 方法
+    setCurrentConnectionId,
     fetchHardwareInfo,
     refreshHardwareInfo,
     startAutoRefresh,
@@ -235,6 +338,6 @@ export const useHardwareStore = defineStore('hardware', () => {
     setRefreshInterval,
     clearHardwareInfo,
     retryWithBackoff,
-    cleanup
+    cleanup,
   };
 });

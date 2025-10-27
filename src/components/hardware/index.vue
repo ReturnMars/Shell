@@ -238,27 +238,23 @@ const formatLastUpdate = (timestamp: number | null) => {
 watch(
   [currentConnectionId, isCurrentConnectionConnected],
   async ([newConnectionId, isConnected], [oldConnectionId, wasConnected]) => {
-    console.log("硬件监控 - 连接状态变化:", {
-      newConnectionId,
-      oldConnectionId,
-      isConnected,
-      wasConnected,
-      currentConnection: connectionStore.currentConnection,
-      connectionState: currentConnectionState.value,
-    });
 
     // 如果连接ID变化了，或者连接状态变化了
     if (newConnectionId !== oldConnectionId || isConnected !== wasConnected) {
       if (newConnectionId && isConnected) {
-        // 有连接ID且已连接 - 获取硬件信息
-        console.log("硬件监控 - 开始获取硬件信息:", newConnectionId);
-        await hardwareStore.fetchHardwareInfo(newConnectionId);
+        // 设置当前连接ID（会立即从池中获取缓存的硬件信息）
+        hardwareStore.setCurrentConnectionId(newConnectionId);
+        
+        // 如果池中没有缓存，则获取硬件信息
+        if (!hardwareStore.hardwareInfo) {
+          await hardwareStore.fetchHardwareInfo(newConnectionId);
+        }
+        
         // 开始自动刷新
         hardwareStore.startAutoRefresh(newConnectionId);
       } else {
-        // 没有连接ID或未连接 - 清除硬件信息并停止自动刷新
-        console.log("硬件监控 - 清除硬件信息并停止自动刷新");
-        hardwareStore.clearHardwareInfo();
+        // 清空当前连接ID并停止自动刷新
+        hardwareStore.setCurrentConnectionId(null);
         hardwareStore.stopAutoRefresh();
       }
     }
@@ -269,63 +265,27 @@ watch(
 // 监听连接状态变化（处理错误和重连）
 watch(currentConnectionState, (newState, oldState) => {
   if (newState && oldState && newState.status !== oldState.status) {
-    console.log("硬件监控 - 连接状态变化:", {
-      connectionId: newState.id,
-      oldStatus: oldState.status,
-      newStatus: newState.status,
-      error: newState.error,
-    });
-
     // 如果连接状态变为错误或断开，清除硬件信息
     if (newState.status === "error" || newState.status === "disconnected") {
-      console.log("硬件监控 - 连接状态异常，清除硬件信息并停止自动刷新");
       hardwareStore.clearHardwareInfo();
       hardwareStore.stopAutoRefresh();
     }
-
-    // 注意：不在这里自动重连
-    // 只有在用户明确选择连接时才获取硬件信息
-    // 这样可以避免断开连接后自动重连的问题
-    // if (newState.status === "connected" && oldState.status !== "connected") {
-    //   console.log("硬件监控 - 连接状态恢复，重新获取硬件信息");
-    //   if (currentConnectionId.value) {
-    //     hardwareStore.fetchHardwareInfo(currentConnectionId.value);
-    //     hardwareStore.startAutoRefresh(currentConnectionId.value);
-    //   }
-    // }
   }
 });
 
-// 监听硬件store的错误状态（已由连接状态管理器处理，这里只记录日志）
-watch(
-  () => hardwareStore.error,
-  (error) => {
-    if (error) {
-      console.log("硬件监控 - 硬件store错误:", error);
-    }
-  }
-);
 
 // 组件挂载时初始化
 onMounted(async () => {
-  console.log("硬件监控 - 组件挂载");
-  console.log("硬件监控 - 当前连接:", currentConnection.value);
-  console.log("硬件监控 - 连接ID:", currentConnectionId.value);
-  console.log("硬件监控 - 是否已连接:", isCurrentConnectionConnected.value);
-  console.log("硬件监控 - 当前连接状态:", currentConnectionState.value);
-
   // 初始化连接状态管理器
   connectionStore.initializeStateManager();
 
   // 同步后端连接状态
   await connectionStore.connectionStateManager.syncBackendConnections();
 
+  // 如果有已连接，则获取硬件信息
   if (currentConnectionId.value && isCurrentConnectionConnected.value) {
-    console.log("硬件监控 - 挂载时开始获取硬件信息");
     await hardwareStore.fetchHardwareInfo(currentConnectionId.value);
     hardwareStore.startAutoRefresh(currentConnectionId.value);
-  } else {
-    console.log("硬件监控 - 挂载时条件不满足，不获取硬件信息");
   }
 });
 

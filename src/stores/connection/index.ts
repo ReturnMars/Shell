@@ -425,10 +425,11 @@ export const useConnectionStore = defineStore("connection", () => {
         currentConnection.value = null;
         console.log("连接Store - 已清空当前连接");
 
-        // 清除硬件信息和停止自动刷新
+        // 清除硬件信息和停止自动刷新（只清除当前连接的）
         const { useHardwareStore } = await import("../hardware");
         const hardwareStore = useHardwareStore();
-        hardwareStore.clearHardwareInfo();
+        hardwareStore.setCurrentConnectionId(null);
+        hardwareStore.clearHardwareInfo(connectionId);
         console.log("连接Store - 已清除硬件信息并停止自动刷新");
       }
 
@@ -461,7 +462,11 @@ export const useConnectionStore = defineStore("connection", () => {
       // 清除硬件信息和停止自动刷新
       const { useHardwareStore } = await import("../hardware");
       const hardwareStore = useHardwareStore();
-      hardwareStore.clearHardwareInfo();
+      hardwareStore.setCurrentConnectionId(null);
+      // 清除所有连接的硬件信息
+      connections.value.forEach(conn => {
+        hardwareStore.clearHardwareInfo(conn.id);
+      });
       console.log("连接Store - 已清除硬件信息并停止自动刷新");
 
       console.log("断开所有连接成功");
