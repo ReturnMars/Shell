@@ -98,6 +98,7 @@ export const useHardwareStore = defineStore("hardware", () => {
       const data = await invoke<HardwareInfo>("get_hardware_info", {
         connectionId,
       });
+      console.log("🚀 ~ fetchHardwareInfo ~ data:", data);
 
       // 存储到硬件信息池中
       hardwareInfoPool.value.set(connectionId, data);

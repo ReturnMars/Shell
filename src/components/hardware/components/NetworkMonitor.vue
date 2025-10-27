@@ -23,27 +23,27 @@
       <!-- 网络总览 -->
       <div class="network-overview">
         <div class="overview-item">
-          <div class="overview-label">总接收</div>
-          <div class="overview-value">
-            {{ formatBytes(networkInfo.total_rx * 1024 * 1024) }}
-          </div>
-        </div>
-        <div class="overview-item">
-          <div class="overview-label">总发送</div>
-          <div class="overview-value">
-            {{ formatBytes(networkInfo.total_tx * 1024 * 1024) }}
-          </div>
-        </div>
-        <div class="overview-item">
           <div class="overview-label">接收速度</div>
           <div class="overview-value">
-            {{ (networkInfo.rx_speed || 0).toFixed(1) }} MB/s
+            {{ `${formatBytes(networkInfo.rx_speed)} /s` }}
           </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">发送速度</div>
           <div class="overview-value">
-            {{ (networkInfo.tx_speed || 0).toFixed(1) }} MB/s
+            {{ `${formatBytes(networkInfo.tx_speed)} /s` }}
+          </div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">总接收</div>
+          <div class="overview-value">
+            {{ formatBytes(networkInfo.total_rx) }}
+          </div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">总发送</div>
+          <div class="overview-value">
+            {{ formatBytes(networkInfo.total_tx) }}
           </div>
         </div>
       </div>
@@ -74,20 +74,16 @@
           <div class="interface-stats">
             <div class="stat-item">
               <span class="stat-label">接收:</span>
-              <span class="stat-value">{{
-                formatBytes(iface.rx * 1024 * 1024)
-              }}</span>
+              <span class="stat-value">{{ formatBytes(iface.rx) }}</span>
               <span class="stat-speed"
-                >{{ (iface.rx_speed || 0).toFixed(1) }} MB/s</span
+                >{{ formatBytes(iface.rx_speed) }} /s</span
               >
             </div>
             <div class="stat-item">
               <span class="stat-label">发送:</span>
-              <span class="stat-value">{{
-                formatBytes(iface.tx * 1024 * 1024)
-              }}</span>
+              <span class="stat-value">{{ formatBytes(iface.tx) }}</span>
               <span class="stat-speed"
-                >{{ (iface.tx_speed || 0).toFixed(1) }} MB/s</span
+                >{{ formatBytes(iface.tx_speed) }} /s</span
               >
             </div>
           </div>
@@ -100,7 +96,7 @@
 <script setup lang="ts">
 import { WifiOutlined, DisconnectOutlined } from "@vicons/antd";
 import type { NetworkInfo } from "../types";
-import { formatBytes } from "@/utils/format";
+import { formatBytes, formatMB } from "@/utils/format";
 
 interface Props {
   networkInfo: NetworkInfo;

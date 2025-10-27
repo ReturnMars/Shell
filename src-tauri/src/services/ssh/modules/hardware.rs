@@ -4,14 +4,31 @@ use super::connection::SshConnectionManager;
 use super::parser::SshDataParser;
 use crate::models::{CpuInfo, HardwareInfo, MemoryInfo, NetworkInfo, StorageInfo};
 use std::sync::Arc;
+use std::collections::HashMap;
+use chrono::DateTime;
+use std::sync::Mutex;
+
+// 上一次的网络数据缓存
+#[allow(dead_code)]
+struct NetworkCache {
+    rx_bytes: u64,
+    tx_bytes: u64,
+    timestamp: DateTime<chrono::Utc>,
+    interfaces: Vec<(String, u64, u64)>, // (name, rx_bytes, tx_bytes)
+}
 
 pub struct SshHardwareService {
     connection_manager: Arc<SshConnectionManager>,
+    #[allow(dead_code)]
+    network_cache: Arc<Mutex<HashMap<String, NetworkCache>>>,
 }
 
 impl SshHardwareService {
     pub fn new(connection_manager: Arc<SshConnectionManager>) -> Self {
-        Self { connection_manager }
+        Self { 
+            connection_manager,
+            network_cache: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     /// 获取CPU信息
@@ -175,7 +192,77 @@ impl SshHardwareService {
 
         SshDataParser::calculate_network_totals(&mut network_info);
 
+        // 计算网络速度
+        self.calculate_network_speed(connection_id, &mut network_info)?;
+
         Ok(network_info)
+    }
+
+    /// 计算网络速度
+    fn calculate_network_speed(
+        &self,
+        connection_id: &str,
+        network_info: &mut NetworkInfo,
+    ) -> Result<(), String> {
+        let cache = self.network_cache.clone();
+        let mut cache_guard = cache.lock().unwrap();
+
+        // 检查是否有缓存的网络数据
+        if let Some(cached) = cache_guard.get(connection_id) {
+            let current_time = chrono::Utc::now();
+            let time_diff = current_time.signed_duration_since(cached.timestamp);
+            let seconds = time_diff.num_milliseconds() as f64 / 1000.0;
+
+            if seconds > 0.0 && seconds < 60.0 {
+                // 计算总速度（字节/秒）
+                let rx_diff = network_info.total_rx.saturating_sub(cached.rx_bytes);
+                let tx_diff = network_info.total_tx.saturating_sub(cached.tx_bytes);
+
+                network_info.rx_speed = rx_diff as f64 / seconds;
+                network_info.tx_speed = tx_diff as f64 / seconds;
+
+                // 为每个接口计算速度
+                let interface_cache: std::collections::HashMap<String, (u64, u64)> = 
+                    cached.interfaces.iter().map(|(name, rx, tx)| {
+                        (name.clone(), (*rx, *tx))
+                    }).collect();
+
+                for interface in &mut network_info.interfaces {
+                    if let Some((cached_rx, cached_tx)) = interface_cache.get(&interface.name) {
+                        let rx_diff = interface.rx.saturating_sub(*cached_rx);
+                        let tx_diff = interface.tx.saturating_sub(*cached_tx);
+                        
+                        interface.rx_speed = rx_diff as f64 / seconds;
+                        interface.tx_speed = tx_diff as f64 / seconds;
+                    }
+                }
+            }
+        } else {
+            // 第一次获取，速度设为0
+            network_info.rx_speed = 0.0;
+            network_info.tx_speed = 0.0;
+            for interface in &mut network_info.interfaces {
+                interface.rx_speed = 0.0;
+                interface.tx_speed = 0.0;
+            }
+        }
+
+        // 更新缓存
+        let interfaces: Vec<(String, u64, u64)> = network_info.interfaces.iter().map(|i| {
+            (i.name.clone(), i.rx, i.tx)
+        }).collect();
+
+        cache_guard.insert(
+            connection_id.to_string(),
+            NetworkCache {
+                rx_bytes: network_info.total_rx,
+                tx_bytes: network_info.total_tx,
+                timestamp: chrono::Utc::now(),
+                interfaces,
+            },
+        );
+
+        Ok(())
     }
 
     /// 获取完整的硬件信息
@@ -183,7 +270,7 @@ impl SshHardwareService {
         // 先检查连接是否存在且已连接
         {
             let connections = self.connection_manager.connections.read().await;
-            
+
             if !connections.contains_key(connection_id) {
                 return Err(format!("连接不存在: {}", connection_id));
             }
@@ -217,13 +304,16 @@ impl SshHardwareService {
         // 先检查连接是否存在且已连接
         {
             let connections = self.connection_manager.connections.read().await;
-            
+
             if !connections.contains_key(connection_id) {
                 return Err("连接不存在".to_string());
             }
 
             if let Some(connection) = connections.get(connection_id) {
-                if !matches!(connection.status, crate::models::ConnectionStatus::Connected) {
+                if !matches!(
+                    connection.status,
+                    crate::models::ConnectionStatus::Connected
+                ) {
                     return Err("连接未建立".to_string());
                 }
             }

@@ -310,7 +310,7 @@ impl SshDataParser {
         }
     }
 
-    /// 计算网络总流量和速度
+    /// 计算网络总流量
     pub fn calculate_network_totals(network_info: &mut NetworkInfo) {
         let mut total_rx = 0u64;
         let mut total_tx = 0u64;
@@ -322,8 +322,7 @@ impl SshDataParser {
 
         network_info.total_rx = total_rx;
         network_info.total_tx = total_tx;
-        network_info.rx_speed = 0.0;
-        network_info.tx_speed = 0.0;
+        // 速度在 hardware.rs 中计算
     }
 
     /// 从命令输出中提取数字部分
