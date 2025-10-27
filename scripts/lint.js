@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,26 +12,17 @@ const __dirname = dirname(__filename);
 const args = process.argv.slice(2);
 const command = args[0] || 'check';
 
-// 目录管理函数
-function clearCacheDir() {
+// 根据命令类型处理目录
+const cacheDir = join(__dirname, '..', '.cache', 'oxlint');
+if (command !== 'open') {
   if (existsSync(cacheDir)) {
     rmSync(cacheDir, { recursive: true, force: true });
   }
   mkdirSync(cacheDir, { recursive: true });
-}
-
-function ensureCacheDir() {
+} else {
   if (!existsSync(cacheDir)) {
     mkdirSync(cacheDir, { recursive: true });
   }
-}
-
-// 根据命令类型处理目录
-const cacheDir = join(__dirname, '..', '.cache', 'oxlint');
-if (command !== 'open') {
-  clearCacheDir();
-} else {
-  ensureCacheDir();
 }
 
 // 处理函数
@@ -47,16 +38,33 @@ function handleFix() {
 
 function handleReport() {
   console.log('📊 生成 JSON 报告...');
-  execSync(`oxlint --format json > "${join(cacheDir, 'report.json')}"`, { stdio: 'inherit' });
-  console.log('✅ JSON 报告已生成:', join(cacheDir, 'report.json'));
+  const output = execSync('oxlint --format json', { encoding: 'utf-8' });
+  const reportPath = join(cacheDir, 'report.json');
+  writeFileSync(reportPath, output, 'utf8');
+  console.log('✅ JSON 报告已生成:', reportPath);
 }
 
 function handleHtml() {
   console.log('📊 生成 HTML 报告...');
-  // 先生成 JSON 报告
-  execSync(`oxlint --format json > "${join(cacheDir, 'report.json')}"`, { stdio: 'pipe' });
+  // 先生成 JSON 报告（oxlint 有错误时会返回非零退出码，但输出依然有用）
+  let output;
+  try {
+    output = execSync('oxlint --format json', { encoding: 'utf-8' });
+  } catch (error) {
+    // 即使有错误，也尝试获取输出
+    output = error.stdout || '';
+  }
+  
+  const reportPath = join(cacheDir, 'report.json');
+  writeFileSync(reportPath, output, 'utf8');
+  
   // 再生成 HTML 报告
-  execSync(`node "${join(__dirname, 'generate-lint-report.js')}"`, { stdio: 'inherit' });
+  try {
+    execSync(`node "${join(__dirname, 'generate-lint-report.js')}"`, { stdio: 'inherit' });
+  } catch (error) {
+    console.error('❌ 生成 HTML 报告失败:', error.message);
+    throw error;
+  }
 }
 
 function handleOpen() {
@@ -66,10 +74,10 @@ function handleOpen() {
     try {
       // 尝试使用不同的方式打开浏览器
       const commands = [
-        `start "" "${htmlPath}"`,  // Windows 默认程序
-        `cmd /c start "" "${htmlPath}"`,  // 通过 cmd 启动
-        `powershell -Command "Start-Process '${htmlPath}'"`,  // PowerShell
-        `rundll32 url.dll,FileProtocolHandler "${htmlPath}"`  // 系统文件协议
+        `start "" "${htmlPath}"`,
+        `cmd /c start "" "${htmlPath}"`,
+        `powershell -Command "Start-Process '${htmlPath}'"`,
+        `rundll32 url.dll,FileProtocolHandler "${htmlPath}"`
       ];
       
       for (const cmd of commands) {
@@ -77,7 +85,7 @@ function handleOpen() {
           execSync(cmd, { stdio: 'pipe' });
           console.log('✅ HTML 报告已在浏览器中打开');
           return;
-        } catch (e) {
+        } catch {
           // 继续尝试下一个命令
         }
       }
@@ -85,7 +93,7 @@ function handleOpen() {
       // 如果所有命令都失败，显示文件路径
       console.log('❌ 无法自动打开浏览器，请手动打开文件:');
       console.log('📁 文件路径:', htmlPath);
-    } catch (error) {
+    } catch {
       console.log('❌ 打开失败，请手动打开文件:');
       console.log('📁 文件路径:', htmlPath);
     }
@@ -134,5 +142,7 @@ try {
   }
 } catch (error) {
   console.error('❌ 执行失败:', error.message);
+  if (error.stdout) console.error('输出:', error.stdout.toString());
+  if (error.stderr) console.error('错误:', error.stderr.toString());
   process.exit(1);
 }

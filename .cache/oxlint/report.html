@@ -176,7 +176,7 @@
             <h1>🔍 Oxlint 代码检查报告</h1>
             <div class="stats">
                 <div class="stat">
-                    <span class="stat-number error-stat">0</span>
+                    <span class="stat-number error-stat">4</span>
                     <span class="stat-label">错误</span>
                 </div>
                 <div class="stat">
@@ -184,7 +184,7 @@
                     <span class="stat-label">警告</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-number total-stat">0</span>
+                    <span class="stat-number total-stat">17</span>
                     <span class="stat-label">总计</span>
                 </div>
             </div>
@@ -192,18 +192,88 @@
         
         <div class="content">
             
-            
-            
-            
-            
-            <div class="no-issues">
-                🎉 太棒了！没有发现任何代码问题！
+            <div class="section">
+                <h2>❌ 错误 (4)</h2>
+                
+      <div class="file-group">
+        <div class="file-header">src/components/terminal/components/xterm官方示例.ts</div>
+        
+          <div class="issue">
+            <div class="issue-icon error-icon">
+              E
             </div>
+            <div class="issue-content">
+              <div class="issue-title">
+                <span class="rule-name">eslint(no-useless-escape)</span>
+                Unnecessary escape character '/'
+              </div>
+              <div class="issue-message">Replace `\/` with `/`.</div>
+              <div class="issue-location">
+                行 1347:37
+              </div>
+            </div>
+          </div>
+        
+          <div class="issue">
+            <div class="issue-icon error-icon">
+              E
+            </div>
+            <div class="issue-content">
+              <div class="issue-title">
+                <span class="rule-name">eslint(no-useless-escape)</span>
+                Unnecessary escape character ' '
+              </div>
+              <div class="issue-message">Replace `\ ` with ` `.</div>
+              <div class="issue-location">
+                行 1347:41
+              </div>
+            </div>
+          </div>
+        
+          <div class="issue">
+            <div class="issue-icon error-icon">
+              E
+            </div>
+            <div class="issue-content">
+              <div class="issue-title">
+                <span class="rule-name">typescript-eslint(no-non-null-asserted-optional-chain)</span>
+                Optional chain expressions can return undefined by design: using a non-null assertion is unsafe and wrong.
+              </div>
+              <div class="issue-message">Remove the non-null assertion.</div>
+              <div class="issue-location">
+                行 1259:86
+              </div>
+            </div>
+          </div>
+        
+          <div class="issue">
+            <div class="issue-icon error-icon">
+              E
+            </div>
+            <div class="issue-content">
+              <div class="issue-title">
+                <span class="rule-name">typescript-eslint(triple-slash-reference)</span>
+                Do not use a triple slash reference for ../typings/xterm.d.ts, use `import` style instead.
+              </div>
+              <div class="issue-message">Use of triple-slash reference type directives is generally discouraged in favor of ECMAScript Module imports.</div>
+              <div class="issue-location">
+                行 9:1
+              </div>
+            </div>
+          </div>
+        
+      </div>
+    
+            </div>
+            
+            
+            
+            
             
         </div>
         
         <div class="timestamp">
-            报告生成时间: 2025/10/22 16:20:50
+            报告生成时间: 2025/10/27 21:15:44
         </div>
     </div>
 </body>
