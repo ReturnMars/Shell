@@ -3,7 +3,7 @@
   <div class="flex flex-col h-full">
     <!-- 标题栏 -->
     <div
-      class="flex items-center justify-between sticky top-0 p-2 bg-white z-10 transition-all duration-200 "
+      class="flex items-center justify-between sticky top-0 p-2 bg-white z-10 transition-all duration-200"
       :class="{ scrolled: isScrolled }"
     >
       <div>
@@ -117,7 +117,7 @@
               quaternary
               size="tiny"
               type="error"
-              @click="disconnectConnection(connection)"
+              @click.stop="disconnectConnection(connection)"
               :loading="
                 connectionStore.loading &&
                 connectionStore.currentConnection?.id === connection.id

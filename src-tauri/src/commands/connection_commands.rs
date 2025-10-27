@@ -1,7 +1,7 @@
 // SSH连接相关的Tauri命令
 use tauri::command;
 use crate::models::{ConnectionConfig, ConnectionStatus, TabInfo};
-use crate::services::ssh_manager::SSH_SERVICE;
+use crate::services::SSH_SERVICE;
 
 /// 建立SSH连接
 #[command]

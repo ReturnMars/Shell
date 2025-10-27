@@ -59,6 +59,7 @@
         <div class="swap-info" v-if="memoryInfo?.swap">
           <div class="swap-header">
             <span class="swap-title">交换分区</span>
+
             <span class="swap-usage">{{
               formatMB(memoryInfo.swap.total)
             }}</span>

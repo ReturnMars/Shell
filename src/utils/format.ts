@@ -29,7 +29,7 @@ const UNITS: { [key in UnitType]: { factor: number; label: string } } = {
 export const formatValue = (
   value: number,
   fromUnit: UnitType = "B",
-  precision: number = 1
+  precision: number = 2
 ): string => {
   if (value === 0) return `0 ${fromUnit}`;
 
@@ -70,7 +70,7 @@ export const formatBytes = (bytes: number): string => {
  * @returns 格式化后的字符串，如 "1.2 GB", "512 MB"
  */
 export const formatMB = (mb: number): string => {
-  return formatValue(mb, "MB", 0);
+  return formatValue(mb, "MB", 2);
 };
 
 /**
@@ -85,8 +85,8 @@ export const formatSwapUsage = (swap: any): string => {
   const total = Math.round(swap.total);
 
   // 交换分区优先显示MB格式，除非超过1GB才显示GB
-  const usedStr = used >= 1024 ? formatValue(used, "KB", 1) : `${used}MB`;
-  const totalStr = total >= 1024 ? formatValue(total, "KB", 1) : `${total}MB`;
-
-  return `${usedStr}/${totalStr}`;
+  const usedStr = used >= 1024 ? formatValue(used, "MB", 1) : `${used}MB`;
+  const totalStr = total >= 1024 ? formatValue(total, "MB", 1) : `${total}MB`;
+  const usage = swap.usage?.toFixed(2) ?? 0;
+  return `${usedStr} / ${usage}%`;
 };

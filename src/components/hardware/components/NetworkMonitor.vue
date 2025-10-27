@@ -1,5 +1,10 @@
 <template>
-  <n-card size="small" class="network-monitor" :content-style="{ padding: '8px' }" :header-style="{ padding: '8px 8px 4px 8px' }">
+  <n-card
+    size="small"
+    class="network-monitor"
+    :content-style="{ padding: '8px' }"
+    :header-style="{ padding: '8px 8px 4px 8px' }"
+  >
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
@@ -19,51 +24,71 @@
       <div class="network-overview">
         <div class="overview-item">
           <div class="overview-label">总接收</div>
-          <div class="overview-value">{{ formatBytes(networkInfo.total_rx * 1024 * 1024) }}</div>
+          <div class="overview-value">
+            {{ formatBytes(networkInfo.total_rx * 1024 * 1024) }}
+          </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">总发送</div>
-          <div class="overview-value">{{ formatBytes(networkInfo.total_tx * 1024 * 1024) }}</div>
+          <div class="overview-value">
+            {{ formatBytes(networkInfo.total_tx * 1024 * 1024) }}
+          </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">接收速度</div>
-          <div class="overview-value">{{ (networkInfo.rx_speed || 0).toFixed(1) }} MB/s</div>
+          <div class="overview-value">
+            {{ (networkInfo.rx_speed || 0).toFixed(1) }} MB/s
+          </div>
         </div>
         <div class="overview-item">
           <div class="overview-label">发送速度</div>
-          <div class="overview-value">{{ (networkInfo.tx_speed || 0).toFixed(1) }} MB/s</div>
+          <div class="overview-value">
+            {{ (networkInfo.tx_speed || 0).toFixed(1) }} MB/s
+          </div>
         </div>
       </div>
 
       <!-- 网络接口列表 -->
       <div class="network-interfaces">
-        <div 
-          class="interface-item" 
-          v-for="(iface, index) in networkInfo.interfaces" 
+        <div
+          class="interface-item"
+          v-for="(iface, index) in networkInfo.interfaces"
           :key="index"
         >
           <div class="interface-header">
             <div class="interface-name">
-              <n-icon size="12" :color="iface.status === 'up' ? '#52c41a' : '#ff4d4f'">
-                <component :is="iface.status === 'up' ? WifiOutlined : DisconnectOutlined" />
+              <n-icon
+                size="14"
+                :color="iface.status === 'up' ? '#52c41a' : '#ff4d4f'"
+              >
+                <component
+                  :is="
+                    iface.status === 'up' ? WifiOutlined : DisconnectOutlined
+                  "
+                />
               </n-icon>
               <span class="interface-label">{{ iface.name }}</span>
-              <n-tag size="tiny" :type="iface.status === 'up' ? 'success' : 'error'">
-                {{ iface.status === 'up' ? '在线' : '离线' }}
-              </n-tag>
             </div>
           </div>
-          
+
           <div class="interface-stats">
             <div class="stat-item">
               <span class="stat-label">接收:</span>
-              <span class="stat-value">{{ formatBytes(iface.rx * 1024 * 1024) }}</span>
-              <span class="stat-speed">{{ (iface.rx_speed || 0).toFixed(1) }} MB/s</span>
+              <span class="stat-value">{{
+                formatBytes(iface.rx * 1024 * 1024)
+              }}</span>
+              <span class="stat-speed"
+                >{{ (iface.rx_speed || 0).toFixed(1) }} MB/s</span
+              >
             </div>
             <div class="stat-item">
               <span class="stat-label">发送:</span>
-              <span class="stat-value">{{ formatBytes(iface.tx * 1024 * 1024) }}</span>
-              <span class="stat-speed">{{ (iface.tx_speed || 0).toFixed(1) }} MB/s</span>
+              <span class="stat-value">{{
+                formatBytes(iface.tx * 1024 * 1024)
+              }}</span>
+              <span class="stat-speed"
+                >{{ (iface.tx_speed || 0).toFixed(1) }} MB/s</span
+              >
             </div>
           </div>
         </div>
@@ -73,9 +98,9 @@
 </template>
 
 <script setup lang="ts">
-import { WifiOutlined, DisconnectOutlined } from '@vicons/antd';
-import type { NetworkInfo } from '../types';
-import { formatBytes } from '@/utils/format';
+import { WifiOutlined, DisconnectOutlined } from "@vicons/antd";
+import type { NetworkInfo } from "../types";
+import { formatBytes } from "@/utils/format";
 
 interface Props {
   networkInfo: NetworkInfo;
@@ -144,7 +169,7 @@ defineProps<Props>();
 }
 
 .interface-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
 }

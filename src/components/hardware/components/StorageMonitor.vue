@@ -30,9 +30,6 @@
           <div class="drive-left">
             <div class="drive-label">{{ storage.mount_point }}</div>
             <div class="drive-usage">
-              <div class="usage-percentage">
-                {{ storage.usage?.toFixed(2) }}%
-              </div>
               <div class="usage-bar">
                 <div
                   class="usage-fill"
@@ -42,15 +39,14 @@
                   }"
                 ></div>
               </div>
+              <div class="usage-percentage">
+                {{ storage.usage?.toFixed(2) }}%
+              </div>
             </div>
             <div class="drive-capacity">
-              <span class="capacity-used">{{
-                formatBytes(storage.used * 1024)
-              }}</span>
+              <span class="capacity-used">{{ formatMB(storage.used) }}</span>
               <span class="capacity-separator">/</span>
-              <span class="capacity-total">{{
-                formatBytes(storage.total * 1024)
-              }}</span>
+              <span class="capacity-total">{{ formatMB(storage.total) }}</span>
             </div>
           </div>
 
@@ -76,8 +72,7 @@
 <script setup lang="ts">
 import { HddOutlined, CloudServerOutlined } from "@vicons/antd";
 import type { StorageInfo } from "../types";
-import { computed } from "vue";
-import { formatBytes } from "@/utils/format";
+import { formatMB } from "@/utils/format";
 
 interface Props {
   storageList: StorageInfo[];
@@ -87,22 +82,7 @@ const props = defineProps<Props>();
 
 // 过滤有效的存储设备
 const validStorageList = computed(() => {
-  return props.storageList.filter(storage => {
-    // 过滤条件：
-    // 1. 总容量大于0
-    // 2. 挂载点不为空
-    // 3. 不是特殊文件系统
-    return storage.total > 0 && 
-           storage.mount_point && 
-           !storage.mount_point.startsWith('/proc') &&
-           !storage.mount_point.startsWith('/sys') &&
-           !storage.mount_point.startsWith('/dev') &&
-           !storage.mount_point.startsWith('/run') &&
-           !storage.mount_point.startsWith('/snap') &&
-           !storage.device.startsWith('tmpfs') &&
-           !storage.device.startsWith('devtmpfs') &&
-           !storage.device.startsWith('overlay');
-  });
+  return props.storageList;
 });
 
 const getStorageIcon = (type: "ssd" | "hdd") => {
@@ -152,16 +132,15 @@ const getUsageColor = (usage: number) => {
   border-radius: 4px;
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   transition: all 0.2s ease;
-  cursor: pointer;
   position: relative;
   min-height: 36px;
 }
 
-.storage-drive:hover {
+/* .storage-drive:hover {
   border-color: #1890ff;
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
   transform: translateY(-1px);
-}
+} */
 
 .drive-left {
   display: flex;
@@ -265,7 +244,7 @@ const getUsageColor = (usage: number) => {
   display: flex;
   align-items: center;
   gap: 1px;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .capacity-used {

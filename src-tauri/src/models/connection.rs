@@ -46,10 +46,10 @@ fn default_prompt_config() -> PromptConfig {
     PromptConfig {
         patterns: vec![
             "]# ".to_string(),
-            "$ ".to_string(), 
-            "> ".to_string(),
-            "# ".to_string(),
-            "% ".to_string(),
+            "]$ ".to_string(),
+            "]> ".to_string(),
+            "]# ".to_string(),
+            "]% ".to_string(),
         ],
         smart_detection: true,
         max_wait_time: 10_000, // 5秒
@@ -109,7 +109,6 @@ pub struct TabInfo {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-
 impl Default for TabInfo {
     fn default() -> Self {
         let now = chrono::Utc::now();
@@ -165,8 +164,6 @@ impl Default for ConnectionConfig {
     }
 }
 
-
-
 impl ConnectionConfig {
     /// 创建新的连接配置
     pub fn new(name: String, host: String, username: String) -> Self {
@@ -207,7 +204,7 @@ impl ConnectionConfig {
         if self.port == 0 {
             return Err("端口号不能为0".to_string());
         }
-        
+
         match self.auth_method {
             AuthMethod::Password => {
                 if self.password.is_none() {
@@ -225,7 +222,7 @@ impl ConnectionConfig {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -248,7 +245,7 @@ pub struct CpuInfo {
     pub model: String,
     pub cores: u32,
     pub usage: f64,
-    pub frequency: Option<f64>, // MHz
+    pub frequency: Option<f64>,   // MHz
     pub temperature: Option<f64>, // 摄氏度
 }
 
@@ -288,21 +285,21 @@ pub struct StorageInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkInfo {
     pub interfaces: Vec<NetworkInterface>,
-    pub total_rx: u64,    // 总接收字节数
-    pub total_tx: u64,    // 总发送字节数
-    pub rx_speed: f64,    // 接收速度 (MB/s)
-    pub tx_speed: f64,    // 发送速度 (MB/s)
+    pub total_rx: u64, // 总接收字节数
+    pub total_tx: u64, // 总发送字节数
+    pub rx_speed: f64, // 接收速度 (MB/s)
+    pub tx_speed: f64, // 发送速度 (MB/s)
 }
 
 /// 网络接口信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkInterface {
-    pub name: String,      // 接口名 (如 eth0, wlan0)
-    pub status: String,    // 状态 (up, down)
-    pub rx: u64,          // 接收字节数
-    pub tx: u64,          // 发送字节数
-    pub rx_speed: f64,    // 接收速度 (MB/s)
-    pub tx_speed: f64,    // 发送速度 (MB/s)
+    pub name: String,   // 接口名 (如 eth0, wlan0)
+    pub status: String, // 状态 (up, down)
+    pub rx: u64,        // 接收字节数
+    pub tx: u64,        // 发送字节数
+    pub rx_speed: f64,  // 接收速度 (MB/s)
+    pub tx_speed: f64,  // 发送速度 (MB/s)
 }
 
 impl Default for HardwareInfo {

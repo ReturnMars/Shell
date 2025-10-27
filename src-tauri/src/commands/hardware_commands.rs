@@ -1,5 +1,5 @@
 // 硬件信息获取命令
-use crate::services::ssh_manager::SSH_SERVICE;
+use crate::services::SSH_SERVICE;
 use crate::models::HardwareInfo;
 
 /// 获取服务器硬件信息

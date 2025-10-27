@@ -84,7 +84,6 @@
       <div v-else-if="hardwareInfo" class="hardware-info">
         <!-- CPU 监控 -->
         <CpuMonitor :cpu-info="hardwareInfo.cpu" />
-
         <!-- 内存监控 -->
         <MemoryMonitor :memory-info="hardwareInfo.memory" />
 

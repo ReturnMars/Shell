@@ -3,17 +3,17 @@
  * 统一管理前后端连接状态，解决状态不同步问题
  */
 
-import { ref, computed } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import type { ConnectionConfig } from './type';
+import { ref, computed } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import type { ConnectionConfig } from "./type";
 
 // 连接状态枚举
 export enum ConnectionStatus {
-  DISCONNECTED = 'disconnected',
-  CONNECTING = 'connecting', 
-  CONNECTED = 'connected',
-  ERROR = 'error',
-  RECONNECTING = 'reconnecting'
+  DISCONNECTED = "disconnected",
+  CONNECTING = "connecting",
+  CONNECTED = "connected",
+  ERROR = "error",
+  RECONNECTING = "reconnecting",
 }
 
 // 连接状态信息
@@ -40,14 +40,18 @@ class ConnectionStateManager {
   }
 
   get connectedStates() {
-    return computed(() => 
-      this.allStates.value.filter(state => state.status === ConnectionStatus.CONNECTED)
+    return computed(() =>
+      this.allStates.value.filter(
+        (state) => state.status === ConnectionStatus.CONNECTED
+      )
     );
   }
 
   get errorStates() {
-    return computed(() => 
-      this.allStates.value.filter(state => state.status === ConnectionStatus.ERROR)
+    return computed(() =>
+      this.allStates.value.filter(
+        (state) => state.status === ConnectionStatus.ERROR
+      )
     );
   }
 
@@ -70,13 +74,17 @@ class ConnectionStateManager {
         lastCheck: Date.now(),
         retryCount: 0,
         maxRetries: this.MAX_RETRIES,
-        ...state
+        ...state,
       });
     }
   }
 
   // 更新连接状态
-  updateConnectionStatus(connectionId: string, status: ConnectionStatus, error?: string) {
+  updateConnectionStatus(
+    connectionId: string,
+    status: ConnectionStatus,
+    error?: string
+  ) {
     const currentState = this.states.value.get(connectionId);
     if (currentState) {
       this.states.value.set(connectionId, {
@@ -84,7 +92,8 @@ class ConnectionStateManager {
         status,
         lastCheck: Date.now(),
         error,
-        retryCount: status === ConnectionStatus.ERROR ? currentState.retryCount + 1 : 0
+        retryCount:
+          status === ConnectionStatus.ERROR ? currentState.retryCount + 1 : 0,
       });
     }
   }
@@ -98,18 +107,27 @@ class ConnectionStateManager {
   async checkConnectionHealth(connectionId: string): Promise<boolean> {
     try {
       // 调用后端检查连接状态
-      const isConnected = await invoke<boolean>('check_connection_status', { connectionId });
-      
+      const isConnected = await invoke<boolean>("check_connection_status", {
+        connectionId,
+      });
+
       if (isConnected) {
         this.updateConnectionStatus(connectionId, ConnectionStatus.CONNECTED);
         return true;
       } else {
-        this.updateConnectionStatus(connectionId, ConnectionStatus.DISCONNECTED);
+        this.updateConnectionStatus(
+          connectionId,
+          ConnectionStatus.DISCONNECTED
+        );
         return false;
       }
     } catch (error) {
       console.error(`检查连接 ${connectionId} 健康状态失败:`, error);
-      this.updateConnectionStatus(connectionId, ConnectionStatus.ERROR, String(error));
+      this.updateConnectionStatus(
+        connectionId,
+        ConnectionStatus.ERROR,
+        String(error)
+      );
       return false;
     }
   }
@@ -121,27 +139,29 @@ class ConnectionStateManager {
     }
 
     this.healthCheckInterval = setInterval(async () => {
-      console.log('连接状态管理器 - 开始健康检查');
-      
+      console.log("连接状态管理器 - 开始健康检查");
+
       for (const [connectionId, state] of this.states.value) {
         if (state.status === ConnectionStatus.CONNECTED) {
           const isHealthy = await this.checkConnectionHealth(connectionId);
           if (!isHealthy) {
             console.warn(`连接 ${connectionId} 健康检查失败`);
-            
+
             // 尝试自动重连
             if (state.retryCount < state.maxRetries) {
               console.log(`连接 ${connectionId} 尝试自动重连`);
               await this.autoReconnect(connectionId);
             } else {
-              console.error(`连接 ${connectionId} 已达到最大重试次数，停止重连`);
+              console.error(
+                `连接 ${connectionId} 已达到最大重试次数，停止重连`
+              );
             }
           }
         }
       }
     }, this.HEALTH_CHECK_INTERVAL);
 
-    console.log('连接状态管理器 - 健康检查已启动');
+    console.log("连接状态管理器 - 健康检查已启动");
   }
 
   // 停止健康检查
@@ -149,7 +169,7 @@ class ConnectionStateManager {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
-      console.log('连接状态管理器 - 健康检查已停止');
+      console.log("连接状态管理器 - 健康检查已停止");
     }
   }
 
@@ -162,27 +182,35 @@ class ConnectionStateManager {
 
     try {
       this.updateConnectionStatus(connectionId, ConnectionStatus.RECONNECTING);
-      
+
       // 调用后端重连
-      const result = await invoke<string>('reconnect_ssh', { 
-        config: state.config 
+      const result = await invoke<string>("reconnect_ssh", {
+        config: state.config,
       });
-      
+
       if (result) {
         // 重连成功，重置重试计数
         this.setConnectionState(connectionId, {
           status: ConnectionStatus.CONNECTED,
           retryCount: 0,
-          lastCheck: Date.now()
+          lastCheck: Date.now(),
         });
         console.log(`连接 ${connectionId} 自动重连成功`);
         return true;
       } else {
-        this.updateConnectionStatus(connectionId, ConnectionStatus.ERROR, '重连失败');
+        this.updateConnectionStatus(
+          connectionId,
+          ConnectionStatus.ERROR,
+          "重连失败"
+        );
         return false;
       }
     } catch (error) {
-      this.updateConnectionStatus(connectionId, ConnectionStatus.ERROR, String(error));
+      this.updateConnectionStatus(
+        connectionId,
+        ConnectionStatus.ERROR,
+        String(error)
+      );
       console.error(`连接 ${connectionId} 自动重连失败:`, error);
       return false;
     }
@@ -191,33 +219,40 @@ class ConnectionStateManager {
   // 同步后端连接状态
   async syncBackendConnections() {
     try {
-      console.log('连接状态管理器 - 开始同步后端连接状态');
-      console.log('连接状态管理器 - states类型:', typeof this.states.value);
-      console.log('连接状态管理器 - states是否为Map:', this.states.value instanceof Map);
-      console.log('连接状态管理器 - states值:', this.states.value);
-      
+      console.log("连接状态管理器 - 开始同步后端连接状态");
+      console.log("连接状态管理器 - states类型:", typeof this.states.value);
+      console.log(
+        "连接状态管理器 - states是否为Map:",
+        this.states.value instanceof Map
+      );
+      console.log("连接状态管理器 - states值:", this.states.value);
+
       // 安全检查：确保states.value是Map对象
       if (!this.states.value || !(this.states.value instanceof Map)) {
-        console.error('连接状态管理器 - states不是有效的Map对象，重新初始化');
         this.states.value = new Map();
         return;
       }
-      
-      const backendConnections = await invoke<ConnectionConfig[]>('get_connected_connections');
-      const backendIds = new Set(backendConnections.map(conn => conn.id));
-      
+
+      const backendConnections = await invoke<ConnectionConfig[]>(
+        "get_connected_connections"
+      );
+      const backendIds = new Set(backendConnections.map((conn) => conn.id));
+
       // 更新所有连接状态
       for (const [connectionId, _state] of this.states.value) {
         if (backendIds.has(connectionId)) {
           this.updateConnectionStatus(connectionId, ConnectionStatus.CONNECTED);
         } else {
-          this.updateConnectionStatus(connectionId, ConnectionStatus.DISCONNECTED);
+          this.updateConnectionStatus(
+            connectionId,
+            ConnectionStatus.DISCONNECTED
+          );
         }
       }
-      
-      console.log('连接状态管理器 - 已同步后端连接状态');
+
+      console.log("连接状态管理器 - 已同步后端连接状态");
     } catch (error) {
-      console.error('同步后端连接状态失败:', error);
+      console.error("同步后端连接状态失败:", error);
     }
   }
 
