@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { useConnectionStore } from "@/stores/connection/index";
-import { IEvent, Terminal } from "@xterm/xterm";
+import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";

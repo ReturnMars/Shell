@@ -7,5 +7,5 @@ pub mod error;
 
 // 重新导出
 pub use crypto::*;
-pub use storage::*;
 pub use error::*;
+pub use storage::*;

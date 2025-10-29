@@ -1,6 +1,6 @@
+use crate::models::ConnectionStatus;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::models::ConnectionStatus;
 
 /// SSH会话信息
 #[derive(Debug, Clone, Serialize, Deserialize)]

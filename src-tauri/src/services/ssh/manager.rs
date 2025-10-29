@@ -14,4 +14,3 @@ lazy_static::lazy_static! {
 pub fn get_ssh_service() -> &'static Arc<RwLock<SshService>> {
     &SSH_SERVICE
 }
-

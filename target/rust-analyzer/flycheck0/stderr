@@ -1,0 +1,114 @@
+   1.094247500s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="shell_mars_lib"}: cargo::core::compiler::fingerprint: fingerprint error for ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri)/Check { test: false }/TargetInner { ..: lib_target("shell_mars_lib", ["staticlib", "cdylib", "rlib"], "E:\\Work\\Shell\\Shell\\src-tauri\\src\\lib.rs", Edition2021) }
+   1.094321600s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="shell_mars_lib"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\Work\Shell\Shell\src-tauri\target\debug\.fingerprint\ShellMars-aa3b0ea08246b14b\lib-shell_mars_lib`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_path
+   6: git_filter_source_path
+   7: git_filter_source_path
+   8: git_filter_source_path
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.412353200s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="shell_mars_lib"}: cargo::core::compiler::fingerprint: fingerprint error for ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri)/Check { test: true }/TargetInner { ..: lib_target("shell_mars_lib", ["staticlib", "cdylib", "rlib"], "E:\\Work\\Shell\\Shell\\src-tauri\\src\\lib.rs", Edition2021) }
+   1.412402600s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="shell_mars_lib"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\Work\Shell\Shell\src-tauri\target\debug\.fingerprint\ShellMars-69456831957187ec\test-lib-shell_mars_lib`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_path
+   6: git_filter_source_path
+   7: git_filter_source_path
+   8: git_filter_source_path
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.415414700s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="ShellMars"}: cargo::core::compiler::fingerprint: fingerprint error for ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri)/Check { test: false }/TargetInner { name: "ShellMars", doc: true, ..: with_path("E:\\Work\\Shell\\Shell\\src-tauri\\src\\main.rs", Edition2021) }
+   1.415449100s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="ShellMars"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\Work\Shell\Shell\src-tauri\target\debug\.fingerprint\ShellMars-9ede892a1c8984a9\bin-ShellMars`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_path
+   6: git_filter_source_path
+   7: git_filter_source_path
+   8: git_filter_source_path
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   1.418695900s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="ShellMars"}: cargo::core::compiler::fingerprint: fingerprint error for ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri)/Check { test: true }/TargetInner { name: "ShellMars", doc: true, ..: with_path("E:\\Work\\Shell\\Shell\\src-tauri\\src\\main.rs", Edition2021) }
+   1.418736000s  INFO prepare_target{force=false package_id=ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri) target="ShellMars"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\Work\Shell\Shell\src-tauri\target\debug\.fingerprint\ShellMars-1aa84e8cbebf3a57\test-bin-ShellMars`
+
+Caused by:
+    系统找不到指定的文件。 (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_path
+   6: git_filter_source_path
+   7: git_filter_source_path
+   8: git_filter_source_path
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+    Checking ShellMars v0.1.0 (E:\Work\Shell\Shell\src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.18s

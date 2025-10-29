@@ -1,7 +1,10 @@
 // SSH连接服务 - 统一入口模块
-use crate::models::{ConnectionConfig, ConnectionStatus, Session as AppSession, TabInfo, CommandOptions, HardwareInfo};
-use crate::services::storage::ConnectionStorage;
 use super::modules::*;
+use crate::models::{
+    CommandOptions, ConnectionConfig, ConnectionStatus, HardwareInfo, Session as AppSession,
+    TabInfo,
+};
+use crate::services::storage::ConnectionStorage;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -48,7 +51,9 @@ impl SshService {
 
     /// 检查连接健康状态
     pub async fn check_connection_health(&self, connection_id: &str) -> Result<bool, String> {
-        self.connection_manager.check_connection_health(connection_id).await
+        self.connection_manager
+            .check_connection_health(connection_id)
+            .await
     }
 
     /// 断开SSH连接
@@ -62,8 +67,13 @@ impl SshService {
     }
 
     /// 获取连接状态
-    pub async fn get_connection_status(&self, connection_id: &str) -> Result<ConnectionStatus, String> {
-        self.connection_manager.get_connection_status(connection_id).await
+    pub async fn get_connection_status(
+        &self,
+        connection_id: &str,
+    ) -> Result<ConnectionStatus, String> {
+        self.connection_manager
+            .get_connection_status(connection_id)
+            .await
     }
 
     /// 获取所有连接
@@ -83,14 +93,21 @@ impl SshService {
 
     /// 获取SSH连接（用于终端服务）
     pub async fn get_ssh_connection(&self, connection_id: &str) -> Result<SshConnection, String> {
-        self.connection_manager.get_ssh_connection(connection_id).await
+        self.connection_manager
+            .get_ssh_connection(connection_id)
+            .await
     }
 
     // ==================== 命令执行方法 ====================
 
     /// 执行SSH命令
-    pub async fn execute_command(&self, connection_id: &str, command: &str) -> Result<String, String> {
-        self.execute_command_with_options(connection_id, command, CommandOptions::default()).await
+    pub async fn execute_command(
+        &self,
+        connection_id: &str,
+        command: &str,
+    ) -> Result<String, String> {
+        self.execute_command_with_options(connection_id, command, CommandOptions::default())
+            .await
     }
 
     /// 执行SSH命令 - 带选项的完整版本
@@ -108,7 +125,13 @@ impl SshService {
             }
 
             if let Some(ref mut shell_channel) = connection.shell_channel {
-                SshCommandExecutor::execute_command_with_options(shell_channel, &connection.config, command, options).await
+                SshCommandExecutor::execute_command_with_options(
+                    shell_channel,
+                    &connection.config,
+                    command,
+                    options,
+                )
+                .await
             } else {
                 Err("Shell通道不存在".to_string())
             }
@@ -156,7 +179,9 @@ impl SshService {
 
     /// 根据链接ID获取标签页
     pub async fn get_tab_by_connection_id(&self, connection_id: &str) -> Option<TabInfo> {
-        self.tab_manager.get_tab_by_connection_id(connection_id).await
+        self.tab_manager
+            .get_tab_by_connection_id(connection_id)
+            .await
     }
 
     // ==================== 硬件信息获取方法 ====================
@@ -167,22 +192,34 @@ impl SshService {
     }
 
     /// 获取CPU信息
-    pub async fn get_cpu_info(&self, connection_id: &str) -> Result<crate::models::CpuInfo, String> {
+    pub async fn get_cpu_info(
+        &self,
+        connection_id: &str,
+    ) -> Result<crate::models::CpuInfo, String> {
         self.hardware_service.get_cpu_info(connection_id).await
     }
 
     /// 获取内存信息
-    pub async fn get_memory_info(&self, connection_id: &str) -> Result<crate::models::MemoryInfo, String> {
+    pub async fn get_memory_info(
+        &self,
+        connection_id: &str,
+    ) -> Result<crate::models::MemoryInfo, String> {
         self.hardware_service.get_memory_info(connection_id).await
     }
 
     /// 获取存储信息
-    pub async fn get_storage_info(&self, connection_id: &str) -> Result<Vec<crate::models::StorageInfo>, String> {
+    pub async fn get_storage_info(
+        &self,
+        connection_id: &str,
+    ) -> Result<Vec<crate::models::StorageInfo>, String> {
         self.hardware_service.get_storage_info(connection_id).await
     }
 
     /// 获取网络信息
-    pub async fn get_network_info(&self, connection_id: &str) -> Result<crate::models::NetworkInfo, String> {
+    pub async fn get_network_info(
+        &self,
+        connection_id: &str,
+    ) -> Result<crate::models::NetworkInfo, String> {
         self.hardware_service.get_network_info(connection_id).await
     }
 }
@@ -192,5 +229,3 @@ impl Default for SshService {
         Self::new().expect("无法创建SSH服务")
     }
 }
-
-

@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted } from "vue";
+import { h } from "vue";
 import {
   CloseOutlined,
   PlusOutlined,
@@ -216,12 +216,6 @@ const closeTab = (tab: TabInfo) => {
 
 const getTabConnection = (tab: TabInfo) => {
   return connectionStore.getTabConnection(tab);
-};
-
-const handleAddTab = () => {
-  console.log("添加新标签页 - 请从左侧链接列表中选择链接");
-  // 可以触发侧边栏显示，让用户选择链接
-  // 或者显示一个链接选择对话框
 };
 
 const showFileManager = () => {

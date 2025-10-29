@@ -1,16 +1,16 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 // 模块声明
+pub mod commands;
 pub mod models;
 pub mod services;
-pub mod commands;
 pub mod utils;
 
 // 重新导出常用类型
-pub use models::*;
 pub use commands::connection_commands::*;
-pub use commands::storage_commands::*;
 pub use commands::hardware_commands::*;
+pub use commands::storage_commands::*;
+pub use models::*;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -20,9 +20,8 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化日志 - 设置日志级别为 INFO
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .init();
-    
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![

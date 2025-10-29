@@ -5,13 +5,13 @@ use thiserror::Error;
 pub enum AppError {
     #[error("SSH连接错误: {0}")]
     SshError(String),
-    
+
     #[error("文件操作错误: {0}")]
     FileError(String),
-    
+
     #[error("配置错误: {0}")]
     ConfigError(String),
-    
+
     #[error("网络错误: {0}")]
     NetworkError(String),
 }

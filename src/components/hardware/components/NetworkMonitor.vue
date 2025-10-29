@@ -50,63 +50,87 @@
 
       <!-- 网络接口列表 -->
       <div class="network-interfaces">
-        <div
-          class="interface-item"
-          v-for="(iface, index) in networkInfo.interfaces"
-          :key="index"
-        >
-          <div class="interface-header">
-            <div class="interface-name">
-              <n-icon
-                size="14"
-                :color="iface.status === 'up' ? '#52c41a' : '#ff4d4f'"
-              >
-                <component
-                  :is="
-                    iface.status === 'up' ? WifiOutlined : DisconnectOutlined
-                  "
-                />
+        <n-collapse size="tiny">
+          <n-collapse-item name="network-interfaces">
+            <template #arrow>
+              <n-icon size="12" color="#13c2c2">
+                <CaretRightOutlined />
               </n-icon>
-              <span class="interface-label">{{ iface.name }}</span>
-            </div>
-          </div>
+            </template>
+            <template #header>
+              <div class="interface-header-title text-xs font-medium">
+                网络接口
+              </div>
+            </template>
+            <div
+              class="interface-item"
+              v-for="(iface, index) in networkInfo.interfaces"
+              :key="index"
+            >
+              <div class="interface-header">
+                <div class="interface-name">
+                  <n-icon
+                    size="14"
+                    :color="iface.status === 'up' ? '#52c41a' : '#ff4d4f'"
+                  >
+                    <component
+                      :is="
+                        iface.status === 'up'
+                          ? WifiOutlined
+                          : DisconnectOutlined
+                      "
+                    />
+                  </n-icon>
+                  <span class="interface-label">{{ iface.name }}</span>
+                </div>
+              </div>
 
-          <div class="interface-stats">
-            <div class="stat-item">
-              <span class="stat-label">接收:</span>
-              <span class="stat-value">{{ formatFromBytes(iface.rx) }}</span>
-              <span class="stat-speed"
-                >{{ formatFromBytes(iface.rx_speed) }} /s</span
-              >
+              <div class="interface-stats">
+                <div class="stat-item">
+                  <span class="stat-label">接收:</span>
+                  <span class="stat-value">{{
+                    formatFromBytes(iface.rx)
+                  }}</span>
+                  <span class="stat-speed"
+                    >{{ formatFromBytes(iface.rx_speed) }} /s</span
+                  >
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">发送:</span>
+                  <span class="stat-value">{{
+                    formatFromBytes(iface.tx)
+                  }}</span>
+                  <span class="stat-speed"
+                    >{{ formatFromBytes(iface.tx_speed) }} /s</span
+                  >
+                </div>
+              </div>
             </div>
-            <div class="stat-item">
-              <span class="stat-label">发送:</span>
-              <span class="stat-value">{{ formatFromBytes(iface.tx) }}</span>
-              <span class="stat-speed"
-                >{{ formatFromBytes(iface.tx_speed) }} /s</span
-              >
-            </div>
-          </div>
-        </div>
+          </n-collapse-item>
+        </n-collapse>
       </div>
     </div>
   </n-card>
 </template>
 
 <script setup lang="ts">
-import { WifiOutlined, DisconnectOutlined } from "@vicons/antd";
+import {
+  WifiOutlined,
+  DisconnectOutlined,
+  CaretRightOutlined,
+} from "@vicons/antd";
 import type { NetworkInfo } from "../types";
 import { formatFromBytes } from "@/utils/format";
 
 /**
  * 网络监控组件
- * 
+ *
  * 数据单位说明（后端返回）：
  * - networkInfo.total_rx/total_tx: bytes（字节数），累计接收/发送的总字节数，使用 formatFromBytes() 格式化
  * - networkInfo.rx_speed/tx_speed: bytes/s（字节/秒），总接收/发送速度，使用 formatFromBytes() 格式化
  * - interface.rx/tx: bytes（字节数），接口累计接收/发送的字节数，使用 formatFromBytes() 格式化
  * - interface.rx_speed/tx_speed: bytes/s（字节/秒），接口接收/发送速度，使用 formatFromBytes() 格式化
- * 
+ *
  * formatFromBytes() 函数会自动转换为合适的单位显示（B/KB/MB/GB等）
  */
 

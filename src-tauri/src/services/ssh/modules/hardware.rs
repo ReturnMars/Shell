@@ -3,9 +3,9 @@ use super::command::SshCommandExecutor;
 use super::connection::SshConnectionManager;
 use super::parser::SshDataParser;
 use crate::models::{CpuInfo, HardwareInfo, MemoryInfo, NetworkInfo, StorageInfo};
-use std::sync::Arc;
-use std::collections::HashMap;
 use chrono::DateTime;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 
 // 上一次的网络数据缓存
@@ -25,7 +25,7 @@ pub struct SshHardwareService {
 
 impl SshHardwareService {
     pub fn new(connection_manager: Arc<SshConnectionManager>) -> Self {
-        Self { 
+        Self {
             connection_manager,
             network_cache: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -222,16 +222,17 @@ impl SshHardwareService {
                 network_info.tx_speed = tx_diff as f64 / seconds;
 
                 // 为每个接口计算速度
-                let interface_cache: std::collections::HashMap<String, (u64, u64)> = 
-                    cached.interfaces.iter().map(|(name, rx, tx)| {
-                        (name.clone(), (*rx, *tx))
-                    }).collect();
+                let interface_cache: std::collections::HashMap<String, (u64, u64)> = cached
+                    .interfaces
+                    .iter()
+                    .map(|(name, rx, tx)| (name.clone(), (*rx, *tx)))
+                    .collect();
 
                 for interface in &mut network_info.interfaces {
                     if let Some((cached_rx, cached_tx)) = interface_cache.get(&interface.name) {
                         let rx_diff = interface.rx.saturating_sub(*cached_rx);
                         let tx_diff = interface.tx.saturating_sub(*cached_tx);
-                        
+
                         interface.rx_speed = rx_diff as f64 / seconds;
                         interface.tx_speed = tx_diff as f64 / seconds;
                     }
@@ -248,9 +249,11 @@ impl SshHardwareService {
         }
 
         // 更新缓存
-        let interfaces: Vec<(String, u64, u64)> = network_info.interfaces.iter().map(|i| {
-            (i.name.clone(), i.rx, i.tx)
-        }).collect();
+        let interfaces: Vec<(String, u64, u64)> = network_info
+            .interfaces
+            .iter()
+            .map(|i| (i.name.clone(), i.rx, i.tx))
+            .collect();
 
         cache_guard.insert(
             connection_id.to_string(),

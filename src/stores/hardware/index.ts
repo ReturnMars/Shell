@@ -17,7 +17,7 @@ export const useHardwareStore = defineStore("hardware", () => {
   const lastUpdatePool = ref<Map<string, number>>(new Map());
   // 自动刷新
   const autoRefresh = ref(true);
-  const refreshInterval = ref(5000); // 5秒刷新一次
+  const refreshInterval = ref(2_000); // 2秒刷新一次
   // 每个连接的定时器池
   const refreshTimers = ref<Map<string, NodeJS.Timeout>>(new Map());
 

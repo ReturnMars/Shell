@@ -1,7 +1,7 @@
 // SSH连接相关的Tauri命令
-use tauri::command;
 use crate::models::{ConnectionConfig, ConnectionStatus, TabInfo};
 use crate::services::SSH_SERVICE;
+use tauri::command;
 
 /// 建立SSH连接
 #[command]
@@ -69,7 +69,7 @@ pub async fn reconnect_ssh(config: ConnectionConfig) -> Result<String, String> {
             log::warn!("重连时断开现有连接失败: {}", e);
         }
     } // 释放读锁
-    
+
     // 重新建立连接
     let service = SSH_SERVICE.read().await;
     service.connect(config).await
@@ -92,17 +92,17 @@ pub async fn generate_uuid() -> Result<String, String> {
 #[command]
 pub async fn test_connection(config: ConnectionConfig) -> Result<String, String> {
     let service = SSH_SERVICE.read().await;
-    
+
     // 建立连接进行测试
     let connection_id = service.connect(config).await?;
-    
+
     // 立即断开测试连接
     drop(service); // 释放读锁
     let service = SSH_SERVICE.read().await;
     if let Err(e) = service.disconnect(&connection_id).await {
         log::warn!("测试连接断开时出现警告: {}", e);
     }
-    
+
     Ok(format!("连接测试成功: {}", connection_id))
 }
 

@@ -1,5 +1,5 @@
 // SSH命令执行模块
-use crate::models::{ConnectionConfig, CommandOptions};
+use crate::models::{CommandOptions, ConnectionConfig};
 use ssh2::Channel;
 use std::io::{Read, Write};
 use tokio::time::Duration;
@@ -13,7 +13,13 @@ impl SshCommandExecutor {
         config: &ConnectionConfig,
         command: &str,
     ) -> Result<String, String> {
-        Self::execute_command_with_options(shell_channel, config, command, CommandOptions::default()).await
+        Self::execute_command_with_options(
+            shell_channel,
+            config,
+            command,
+            CommandOptions::default(),
+        )
+        .await
     }
 
     /// 执行SSH命令 - 带选项的完整版本
@@ -56,10 +62,14 @@ impl SshCommandExecutor {
         let mut output = String::new();
         let mut buffer = [0u8; 4096];
 
-        let prompt_patterns = options.custom_prompts.as_ref()
+        let prompt_patterns = options
+            .custom_prompts
+            .as_ref()
             .unwrap_or(&config.prompt_config.patterns);
 
-        let max_wait_time = options.timeout.unwrap_or(config.prompt_config.max_wait_time);
+        let max_wait_time = options
+            .timeout
+            .unwrap_or(config.prompt_config.max_wait_time);
         let max_empty_reads = config.prompt_config.max_empty_reads;
 
         let start_time = std::time::Instant::now();
@@ -92,7 +102,9 @@ impl SshCommandExecutor {
                         if options.debug_output {
                             println!("读取失败: {:?}", e);
                         }
-                        if e.to_string().contains("Failure while draining incoming flow") {
+                        if e.to_string()
+                            .contains("Failure while draining incoming flow")
+                        {
                             if options.debug_output {
                                 println!("遇到draining flow错误，尝试继续读取");
                             }
@@ -152,7 +164,9 @@ impl SshCommandExecutor {
                         if options.debug_output {
                             println!("读取失败: {:?}", e);
                         }
-                        if e.to_string().contains("Failure while draining incoming flow") {
+                        if e.to_string()
+                            .contains("Failure while draining incoming flow")
+                        {
                             if options.debug_output {
                                 println!("遇到draining flow错误，尝试继续读取");
                             }

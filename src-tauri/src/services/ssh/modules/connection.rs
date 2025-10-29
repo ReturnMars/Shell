@@ -37,12 +37,14 @@ impl SshConnectionManager {
     }
 
     /// 建立SSH连接
-    pub async fn connect(
-        &self,
-        config: ConnectionConfig,
-    ) -> Result<String, String> {
+    pub async fn connect(&self, config: ConnectionConfig) -> Result<String, String> {
         log::info!("SSH连接 - 开始建立连接: {}", config.id);
-        log::info!("SSH连接 - 连接配置: {}@{}:{}", config.username, config.host, config.port);
+        log::info!(
+            "SSH连接 - 连接配置: {}@{}:{}",
+            config.username,
+            config.host,
+            config.port
+        );
 
         // 验证配置
         config
@@ -60,7 +62,11 @@ impl SshConnectionManager {
                     log::warn!("SSH连接 - 连接 {} 已经处于连接状态", connection_id);
                     return Err("连接已存在".to_string());
                 } else {
-                    log::info!("SSH连接 - 连接 {} 存在但状态为 {:?}，将重新连接", connection_id, conn.status);
+                    log::info!(
+                        "SSH连接 - 连接 {} 存在但状态为 {:?}，将重新连接",
+                        connection_id,
+                        conn.status
+                    );
                     // 移除旧的断开状态的连接
                     drop(connections);
                     let mut connections = self.connections.write().await;
@@ -246,10 +252,7 @@ impl SshConnectionManager {
     }
 
     /// 获取SSH连接（用于终端服务）
-    pub async fn get_ssh_connection(
-        &self,
-        connection_id: &str,
-    ) -> Result<SshConnection, String> {
+    pub async fn get_ssh_connection(&self, connection_id: &str) -> Result<SshConnection, String> {
         let connections = self.connections.read().await;
 
         if let Some(connection) = connections.get(connection_id) {
