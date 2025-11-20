@@ -13,6 +13,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-window-state": "~2.4.1",
+    "@vicons/antd": "^0.13.0",
     "@vicons/ionicons5": "^0.13.0",
     "@vueuse/core": "^14.0.0",
     "unocss": "^66.5.7",

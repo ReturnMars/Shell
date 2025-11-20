@@ -1,10 +1,12 @@
 <template>
   <div class="hardware-info-container">
-    <CpuInfo />
-    <MemoryInfo />
-    <DiskInfo />
-    <NetworkInfo />
-    <GpuInfo />
+    <div class="hardware-info-content">
+      <CpuInfo />
+      <MemoryInfo />
+      <DiskInfo />
+      <NetworkInfo />
+      <GpuInfo />
+    </div>
   </div>
 </template>
 
@@ -16,10 +18,9 @@ import NetworkInfo from "./NetworkInfo.vue";
 import GpuInfo from "./GpuInfo.vue";
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .hardware-info-container {
   width: 100%;
-  padding: 4px;
   box-sizing: border-box;
   overflow-x: hidden;
 }

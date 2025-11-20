@@ -8,7 +8,16 @@
       :width="siderConfig.width"
       :native-scrollbar="false"
     >
-      <HardwareInformation />
+      <div class="sider-content">
+        <!-- 链接管理 -->
+        <div class="sider-top">
+          <LinkList />
+        </div>
+        <!-- 硬件信息 -->
+        <div class="sider-bottom">
+          <HardwareInformation />
+        </div>
+      </div>
     </n-layout-sider>
     <n-layout-content>
       <div class="w-full h-full flex flex-col">
@@ -27,6 +36,7 @@
 import { BookOutline, PersonOutline, WineOutline } from "@vicons/ionicons5";
 import { renderIcon } from "../../utils/renderIcon";
 import HardwareInformation from "../../components/HardwareInformation/index.vue";
+import LinkList from "../../components/LinkList/index.vue";
 
 const siderConfig = {
   width: "clamp(180px, 18vw, 240px)",
@@ -112,5 +122,29 @@ const menuOptions = [
 .layout-container {
   width: 100%;
   height: 100%;
+  :deep(.n-scrollbar-container) {
+    .n-scrollbar-content {
+      height: 100%;
+    }
+    height: 100%;
+  }
+}
+.sider-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+
+  .sider-top {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .sider-bottom {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
 }
 </style>
