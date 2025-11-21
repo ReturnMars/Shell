@@ -1,66 +1,92 @@
 <template>
   <div
-    class="link-item b-r-4 b-r-solid b-r-transparent"
+    class="link-item b-l-4 b-l-solid b-l-transparent"
     :class="{
-      '!bg-green-50 !b-r-green-500': isActive,
+      '!bg-green-50 !b-l-green-500': linkStore.currentLinkItem?.id === id,
     }"
-    @click="handleClick"
+    @click="linkStore.setCurrentLinkItemById(id)"
   >
     <div class="link-item-content">
       <div class="link-icon-wrapper">
         <StatusDot :status="status" />
       </div>
       <div class="link-info">
-        <div class="link-name">{{ name }}</div>
-        <div class="link-url">{{ link }}</div>
+        <div class="link-name">
+          <n-ellipsis>{{ name }}</n-ellipsis>
+        </div>
+        <div class="link-url">
+          <n-ellipsis>{{ ip }}</n-ellipsis>
+        </div>
       </div>
     </div>
     <div class="link-operation">
-      <!-- 连接\断开 -->
-      <n-button size="small" text>
-        <template #icon>
-          <n-icon :size="14">
-            <component :is="LinkOutlined" />
-          </n-icon>
+      <!-- 断开 -->
+      <n-popover>
+        <template #trigger>
+          <n-button size="small" text>
+            <template #icon>
+              <n-icon :size="14">
+                <component :is="DisconnectOutlined" />
+              </n-icon>
+            </template>
+          </n-button>
         </template>
-      </n-button>
-      <n-button size="small" text>
-        <template #icon>
-          <n-icon :size="14">
-            <component :is="SettingOutlined" />
-          </n-icon>
+        <span>断开连接</span>
+      </n-popover>
+      <!-- 链接设置 -->
+      <n-popover>
+        <template #trigger>
+          <n-button size="small" text>
+            <template #icon>
+              <n-icon :size="14">
+                <component :is="ControlOutlined" />
+              </n-icon>
+            </template>
+          </n-button>
         </template>
-      </n-button>
+        <span>链接设置</span>
+      </n-popover>
+      <!-- 删除 -->
+      <n-popover>
+        <template #trigger>
+          <n-button size="small" text>
+            <template #icon>
+              <n-icon :size="14">
+                <component :is="DeleteRowOutlined" />
+              </n-icon>
+            </template>
+          </n-button>
+        </template>
+        <span>删除</span>
+      </n-popover>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import StatusDot from "./StatusDot.vue";
-import { SettingOutlined, LinkOutlined } from "@vicons/antd";
+import {
+  ControlOutlined,
+  DisconnectOutlined,
+  DeleteRowOutlined,
+} from "@vicons/antd";
+import { useLinkStore } from "@/store/modules/LinkStore/index";
 
 interface Props {
   name: string;
-  link: string;
+  ip: string;
+  id: string | number;
   status?: "info" | "success" | "connecting";
-  isActive?: boolean;
 }
 
-// const props = withDefaults(defineProps<Props>(), {
-//   status: "info",
-//   isActive: false,
-// });
-const { status = "info", isActive = false, link } = defineProps<Props>();
-const handleClick = () => {
-  const url = link.startsWith("http") ? link : `http://${link}`;
-  window.open(url, "_blank");
-};
+const { status = "info", ip, id } = defineProps<Props>();
+const linkStore = useLinkStore();
 </script>
 
 <style scoped lang="scss">
 .link-item {
   line-height: normal;
-  padding: 6px 4px 6px 12px;
+  padding: 6px 4px 6px 8px;
   background: var(--n-card-color);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -76,6 +102,12 @@ const handleClick = () => {
     .link-name {
       color: rgb(55, 65, 81);
     }
+    .link-operation {
+      width: auto;
+    }
+  }
+  &:last-child {
+    border-bottom: none;
   }
 }
 
@@ -85,6 +117,7 @@ const handleClick = () => {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  overflow: hidden;
   .link-icon-wrapper {
     flex-shrink: 0;
     display: flex;
@@ -104,16 +137,26 @@ const handleClick = () => {
     font-size: 14px;
     font-weight: 500;
     color: rgb(55, 65, 81);
-    line-height: 1.4;
+    line-height: 1.2;
     transition: color 0.2s ease;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .link-url {
     font-size: 12px;
     color: rgb(107, 114, 128);
-    line-height: 1.4;
+    line-height: 1.2;
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
       "Liberation Mono", monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 100%;
   }
 }
 
@@ -123,5 +166,9 @@ const handleClick = () => {
   align-items: center;
   justify-content: center;
   gap: 4px;
+  min-width: 0;
+  width: 0;
+  overflow-x: hidden;
+  transition: width 0.2s ease;
 }
 </style>

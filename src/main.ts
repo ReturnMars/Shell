@@ -1,5 +1,7 @@
 import { createApp } from "vue";
 import { router } from "./router";
+import { pinia } from "./store";
+
 import App from "./App.vue";
 // 通用字体
 import "vfonts/Lato.css";
@@ -11,4 +13,5 @@ import "virtual:uno.css";
 
 const app = createApp(App);
 app.use(router);
+app.use(pinia);
 app.mount("#app");

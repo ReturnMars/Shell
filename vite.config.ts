@@ -3,7 +3,8 @@ import vue from "@vitejs/plugin-vue";
 import AutoImport from "unplugin-auto-import/vite";
 import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
-import UnoCSS from 'unocss/vite'
+import UnoCSS from "unocss/vite";
+import path from "node:path";
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
@@ -37,6 +38,11 @@ export default defineConfig(async ({ mode }) => {
       watch: {
         // 3. tell Vite to ignore watching `src-tauri`
         ignored: ["**/src-tauri/**"],
+      },
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "src"),
       },
     },
   };

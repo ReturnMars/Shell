@@ -1,7 +1,6 @@
 <template>
   <div class="status-dot" :class="`status-${status}`">
     <div class="dot-inner"></div>
-    <div v-if="status === 'connecting'" class="dot-pulse"></div>
   </div>
 </template>
 
@@ -41,18 +40,6 @@ defineProps<Props>();
   animation: blink 1.1s ease-in-out infinite;
 }
 
-.dot-pulse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: rgb(59, 130, 246);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
 @keyframes blink {
   0%,
   100% {
@@ -60,21 +47,6 @@ defineProps<Props>();
   }
   50% {
     opacity: 0.4;
-  }
-}
-
-@keyframes pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(2);
-    opacity: 0.2;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2.5);
-    opacity: 0;
   }
 }
 </style>

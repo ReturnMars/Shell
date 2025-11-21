@@ -12,6 +12,12 @@ body {
   height: 100vh;
 }
 
+// 允许在 transition 中使用关键字（如 auto、min-content、max-content）
+// Chrome 129+ 支持
+:root {
+  interpolate-size: allow-keywords;
+}
+
 // 全局滚动条样式，与 n-scrollbar 保持一致
 * {
   &::-webkit-scrollbar {

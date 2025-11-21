@@ -1,5 +1,8 @@
 <template>
   <div class="hardware-info-container">
+    <div class="hardware-info-title">
+      <n-text>系统信息</n-text>
+    </div>
     <div class="hardware-info-content">
       <CpuInfo />
       <MemoryInfo />
@@ -23,5 +26,10 @@ import GpuInfo from "./GpuInfo.vue";
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  .hardware-info-title {
+    border-bottom: 1px dashed var(--n-border-color);
+    padding: 8px 8px;
+    margin-bottom: 4px;
+  }
 }
 </style>
